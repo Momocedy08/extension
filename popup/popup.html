@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+  <title>Projets Dolibarr</title>
+</head>
+<body>
+ <!-- Formulaire de configuration -->
+<div id="config-section">
+  <h2>Configuration</h2>
+  <form id="config-form">
+    <label>API :<br>
+      <input type="text" id="apiKey" required>
+    </label><br><br>
+    <label>URL de base :<br>
+      <input type="text" id="baseUrl" required>
+    </label><br><br>
+    <button type="button" id="saveBtn">Enregistrer</button>
+  </form>
+</div>
+
+<!-- Bouton pour modifier la configuration -->
+<!-- Section avec deux boutons côte à côte -->
+<div id="modify-config" style="display: flex; gap: 10px; margin-bottom: 15px;">
+  <button id="editConfigBtn">Modifier la configuration</button>
+  <button id="addStatusBtn">Ajouter un statut</button>
+</div>
+<!-- Contenu principal -->
+<div id="main-content">
+  <h1>Projets :</h1>
+  <ul id="project-list"></ul>
+
+  <div id="project-details"></div>
+  <button id="fillFormButton" style="display: none;">Remplir le formulaire de Iouston</button>
+<!-- Bouton pour afficher/masquer le formulaire -->
+
+
+<!-- Formulaire d’ajout de statut -->
+<div id="add-status-form-container" style="display: none; margin-bottom: 20px;">
+  <h3>Ajouter un statut</h3>
+  <h3>Attention, seulement si recommendé par l'informaticien</h3>
+  <form id="add-status-form">
+    <label for="status-key">Clé du statut :</label>
+    <input type="number" id="status-key" name="status-key" required>
+
+    <label for="status-value">Nom du statut :</label>
+    <input type="text" id="status-value" name="status-value" required>
+
+    <button type="submit">Enregistrer le statut</button>
+   <button type="button" id="cancelStatusBtn" style="background-color: red; color: white;">Annuler</button>
+  </form>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>
+
