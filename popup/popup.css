@@ -187,3 +187,29 @@ ul#project-list li div {
 #addStatusBtn:hover {
   background-color: #138496;
 }
+#messageErreur {
+  display: none; /* caché par défaut */
+  
+  position: fixed;  /* pour être fixe même en scroll */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  background-color: #f8d7da; /* rouge clair */
+  color: #721c24; /* rouge foncé */
+  
+  padding: 15px 25px;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: center;
+  
+  z-index: 9999; /* très au-dessus de tout */
+  width: 80%;  /* largeur adaptée */
+  max-width: 400px; /* limite la largeur max */
+  box-sizing: border-box;
+
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}

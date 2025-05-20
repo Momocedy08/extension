@@ -5,9 +5,11 @@
   <meta charset="utf-8">
   <link rel="stylesheet" href="popup.css">
   <title>Projets Dolibarr</title>
+  
 </head>
 <body>
  <!-- Formulaire de configuration -->
+ <p id="page"> page courante </p>
 <div id="config-section">
   <h2>Configuration</h2>
   <form id="config-form">
@@ -23,6 +25,7 @@
 
 <!-- Bouton pour modifier la configuration -->
 <!-- Section avec deux boutons côte à côte -->
+
 <div id="modify-config" style="display: flex; gap: 10px; margin-bottom: 15px;">
   <button id="editConfigBtn">Modifier la configuration</button>
   <button id="addStatusBtn">Ajouter un statut</button>
@@ -52,6 +55,8 @@
    <button type="button" id="cancelStatusBtn" style="background-color: red; color: white;">Annuler</button>
   </form>
 </div>
+<div id="messageErreur"></div>
+<script src="param.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

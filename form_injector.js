@@ -1,14 +1,20 @@
-(function () {
-  console.log("Content script injecté");
+// form_injector.js
 
-  const params = new URLSearchParams(window.location.search);
+// Ecoute les messages depuis la popup
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "remplirFormulaireIouston") {
+    remplirFormulaireIouston(message.data);
+    sendResponse({ status: "iouston rempli" });
+  } else if (message.action === "remplirFormulaireInedis") {
+    remplirFormulaireInedis(message.data);
+    sendResponse({ status: "inedis rempli" });
+  }
+});
 
-  const prenom = params.get("firstname");
-  const nom = params.get("lastname");
-  const codePostal = params.get("zip");
-  const adresse = params.get("address");
-  const telephone = params.get("phone");
-  // Utilisation de setIntervalle pour gerer la durer de remplissage
+// Fonction pour remplir le formulaire Iouston
+function remplirFormulaireIouston(data) {
+  const { firstname, lastname, zip, address, phone } = data;
+
   const tryFillForm = setInterval(() => {
     const champPrenom = document.querySelector("input[name='input_1.3']");
     const champNom = document.querySelector("input[name='input_1.6']");
@@ -17,19 +23,19 @@
     const champTelephone = document.querySelector("input[name='input_4']");
 
     if (champPrenom && champNom && champAdresse && champCodePostal && champTelephone) {
-      champPrenom.value = prenom || "";
-      champNom.value = nom || "";
-      champAdresse.value = adresse || "";
-      champCodePostal.value = codePostal || "";
-      champTelephone.value = telephone || "";
+      champPrenom.value = firstname || "";
+      champNom.value = lastname || "";
+      champAdresse.value = address || "";
+      champCodePostal.value = zip || "";
+      champTelephone.value = phone || "";
 
-      console.log("Champs du formulaire remplis !");
+      console.log("Formulaire Iouston rempli !");
       clearInterval(tryFillForm);
     } else {
-      console.log("En attente du formulaire...");
+      console.log("En attente du formulaire Iouston...");
     }
-  }, 500); // essaie toutes les 500 ms
+  }, 500);
 
-  //  arrête d'essayer Après 10 secondes
+  // Arrête après 10s si le formulaire n'est pas prêt
   setTimeout(() => clearInterval(tryFillForm), 10000);
-})();
+}

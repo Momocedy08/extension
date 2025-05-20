@@ -9,9 +9,20 @@
   const apiKeyInput = document.getElementById("apiKey");
   const cancelBtn = document.getElementById('cancelStatusBtn');
   const fillFormButton = document.getElementById("fillFormButton");
-
   const BASE_URL = localStorage.getItem("BASE_URL");
   const API_KEY = localStorage.getItem("API_KEY");
+
+  function showErrorMessage(message) {
+    console.log("showErrorMessage called with:", message);
+  const messageErreur = document.getElementById("messageErreur");
+  messageErreur.textContent = message;
+  messageErreur.style.display = "block";
+
+  // Optionnel : masquer automatiquement après 3 secondes
+  setTimeout(() => {
+    messageErreur.style.display = "none";
+  }, 3000);
+}
 
   function showConfigForm() {
     configForm.style.display = "block";
@@ -180,7 +191,7 @@
     fillFormButton.currentProject = projectDetails;
   }
    //  d’écouteur pour le bouton remplir un formulaire
-   fillFormButton.addEventListener("click", () => {
+   /*fillFormButton.addEventListener("click", () => {
     const project = fillFormButton.currentProject;
 
     if (!project) return;
@@ -194,8 +205,148 @@
     //déclenche la fonction pour remplir le formulaire de Iouston
      console.log("Remplir formulaire avec le projet :", project);
      // Redirige vers le formulaire avec les données dans l’URL
-     console.log("Ouverture fenêtre");
-   window.open(`https://www.iouston.com/contact-2/?${params.toString()}`, "_blank");
-});
-});
+     //console.log("Ouverture fenêtre");
+   const pageElement = document.getElementById("page");
+  if (!pageElement) {
+    console.error("L'élément #page est introuvable");
+    return;
+  }
 
+  const currentUrl = pageElement.textContent.trim(); // récupère l'URL ou texte dans #page
+
+  if (currentUrl.includes("iouston.com/contact-2")) {
+    remplirFormulaireIouston();
+  } else if (currentUrl.includes("inedis.com")) {
+    remplirFormulaireInedis();
+  } else {
+    console.log("Aucune fonction spécifique pour cette URL :", currentUrl);
+  }
+});*/
+  /*fillFormButton.addEventListener("click", () => {
+  const project = fillFormButton.currentProject;
+  if (!project) return;
+
+  const pageElement = document.getElementById("page");
+  if (!pageElement) {
+    console.error("L'élément #page est introuvable");
+    return;
+  }
+
+  const currentUrl = pageElement.textContent.trim();
+
+  if (currentUrl.includes("iouston.com/contact-2") || currentUrl.includes("inedis.com")) {
+    // Trouver l’onglet qui correspond à currentUrl
+    browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
+      if (tabs.length === 0) {
+        console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
+        return;
+      }
+      const tabActif = tabs[0];
+
+      let actionToSend = "";
+      if (currentUrl.includes("iouston.com/contact-2")) {
+        actionToSend = "remplirFormulaireIouston";
+      } else if (currentUrl.includes("inedis.com")) {
+        actionToSend = "remplirFormulaireInedis";
+      } else {
+          console.error("Cette extension ne prend pas encore en charge ce site :", currentUrl);
+            if (messageErreur) {
+              messageErreur.textContent = "Ce site n’est pas encore pris en charge par l’extension.";
+               messageErreur.style.display = "block";
+              }
+             return;
+            }
+
+      browser.tabs.sendMessage(tabActif.id, {
+        action: actionToSend,
+        data: {
+          firstname: project.title || "",
+          lastname: project.statusText,
+          zip: project.opp_status || "",
+          address: project.ref || "",
+          phone: project.budget_amount || ""
+        }
+      });
+    });
+  } else {
+    console.log("Aucune fonction spécifique pour cette URL :", currentUrl);
+  }
+});*/
+  fillFormButton.addEventListener("click", () => {
+  const project = fillFormButton.currentProject;
+  if (!project) return;
+
+  const pageElement = document.getElementById("page");
+  if (!pageElement) {
+    console.error("L'élément #page est introuvable");
+    return;
+  }
+
+  const currentUrl = pageElement.textContent.trim();
+  const profilsUrl = {
+  1:"https://www.iouston.com/contact-2/",
+  2:"https://www.enedis.fr/",
+  3:"edf.fr"
+  };
+  let currentkey;
+
+// Trouver la clé correspondant à currentURL
+const entry = Object.entries(profilsUrl).find(([key, url]) => url === currentUrl);
+if (entry) {
+  const [key, url] = entry;
+  console.log(`URL trouvée avec la clé : ${key}`);
+  currentkey=key;
+} else {
+  console.log("URL non trouvée dans profilsUrl");
+}
+  
+const mapping = {
+  1: {
+    firstname: "project.title",
+    lastname: "project.statusText",
+    zip: "project.opp_status",
+    address: "project.ref",
+    phone: "project.budget_amount"
+  },
+  2: {
+    champ3: "champdolibarr3",
+    champ4: "champdolibarr4"
+  }
+};
+
+console.log(mapping[currentkey]);
+
+
+// Récupérer le tableau de mapping depuis localstorage
+//const mappingJSON = localStorage.getItem('mapping');
+
+
+
+
+  if (currentUrl.includes("iouston.com/contact-2")) {
+    browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
+      if (tabs.length === 0) {
+        console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
+        return;
+      }
+      const tabActif = tabs[0];
+      let actionToSend = currentUrl.includes("iouston.com/contact-2") ? "remplirFormulaireIouston" : "remplirFormulaireInedis";
+
+      browser.tabs.sendMessage(tabActif.id, {
+        action: actionToSend,
+        data: {
+          firstname: project.title || "",
+          lastname: project.statusText,
+          zip: project.opp_status || "",
+          address: project.ref || "",
+          phone: project.budget_amount || ""
+        }
+      });
+    });
+  } else {
+    console.error("Cette extension ne prend pas encore en charge ce site :", currentUrl);
+    showErrorMessage("cette url n'est pas prise en charge !");
+  }
+});
+});
+  
