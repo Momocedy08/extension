@@ -10,6 +10,8 @@
   const cancelBtn = document.getElementById('cancelStatusBtn');
   const fillFormButton = document.getElementById("fillFormButton");
   const BASE_URL = localStorage.getItem("BASE_URL");
+  const urlConfigBtn = document.getElementById("url_config");
+  const menuConfig = document.getElementById("menu_config");
   const API_KEY = localStorage.getItem("API_KEY");
 
   function showErrorMessage(message) {
@@ -17,25 +19,21 @@
   const messageErreur = document.getElementById("messageErreur");
   messageErreur.textContent = message;
   messageErreur.style.display = "block";
-
   // Optionnel : masquer automatiquement après 3 secondes
   setTimeout(() => {
     messageErreur.style.display = "none";
   }, 3000);
 }
-
   function showConfigForm() {
     configForm.style.display = "block";
     mainContent.style.display = "none";
     baseUrlInput.value = BASE_URL || "";
     apiKeyInput.value = API_KEY || "";
   }
-
   function showMainContent() {
     configForm.style.display = "none";
     mainContent.style.display = "block";
   }
-
   editConfigBtn.addEventListener("click", showConfigForm);
 
   saveBtn.addEventListener("click", () => {
@@ -58,8 +56,23 @@
     return;
   } else {
     showMainContent();
+    urlConfigBtn.style.display = "block";
   }
+  //*************************************************************************
+    // Toggle menu URLs
+  urlConfigBtn.addEventListener("click", () => {
+    menuConfig.style.display = menuConfig.style.display === "none" ? "block" : "none";
+  });
+  // Placeholder : afficher/ajouter URL
+  document.getElementById("btn_afficher_urls").addEventListener("click", () => {
+    alert("Fonction à implémenter : afficher les URLs enregistrées.");
+  });
 
+  document.getElementById("btn_ajouter_url").addEventListener("click", () => {
+    alert("Fonction à implémenter : formulaire pour ajouter une nouvelle URL et son mapping.");
+  });
+  // Si la config est complète, on affiche le bouton de config URL
+  //*****************************************************************************
   // --- STATUT PERSO ---
   const addStatusBtn = document.getElementById('addStatusBtn');
   const formContainer = document.getElementById('add-status-form-container');
@@ -72,7 +85,6 @@
   formContainer.style.display = 'none';  // Masque le formulaire
   statusForm.reset(); // Réinitialise les champs
   });
-
   statusForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const key = document.getElementById('status-key').value;
@@ -84,7 +96,6 @@
       alert("Cette clé existe déjà !");
       return;
     }
-
     statusMapping[key] = value;
     localStorage.setItem('statusMapping', JSON.stringify(statusMapping));
 
@@ -92,7 +103,6 @@
     formContainer.style.display = 'none';
     alert("Statut ajouté !");
   });
-
   // --- FETCH DES PROJETS ---
   fetch(`${BASE_URL}/projects`, {
     method: "GET",
@@ -131,7 +141,6 @@
       const list = document.getElementById("project-list");
       list.innerHTML = `<li style="color:red;">Erreur : ${error.message}</li>`;
     });
-
   function fetchProjectDetails(projectId) {
     fetch(`${BASE_URL}/projects/${projectId}`, {
       method: "GET",
@@ -152,141 +161,79 @@
         alert(`Erreur : ${error.message}`);
       });
   }
-
-  function displayProjectDetails(projectDetails) {
-    const startDate = projectDetails.date_c
-      ? new Date(projectDetails.date_c * 1000).toLocaleDateString()
-      : "Inconnue";
-
-    const defaultMapping = {
-      0: "Brouillon",
-      1: "Validé",
-      2: "Terminé"
-    };
-
-    const customMapping = JSON.parse(localStorage.getItem('statusMapping')) || {};
-    const statusMapping = { ...defaultMapping, ...customMapping };
-
-    const projectStatus = parseInt(projectDetails.status, 10);
-    const statusText = statusMapping[projectStatus] || "Inconnu";
-
-    const detailsContainer = document.getElementById("project-details");
-    detailsContainer.innerHTML = `
-      <h3>Détails du projet</h3>
-      <p><strong>Réf. :</strong> ${projectDetails.ref || "Aucune"}</p>
-      <p><strong>Titre :</strong> ${projectDetails.title || "Aucune"}</p>
-      <p><strong>Usage :</strong> ${projectDetails.usage_opportunity || "Non définie"}</p>
-      <p><strong>Tierce partie :</strong> ${projectDetails.entity || "Aucune"}</p>
-      <p><strong>Statut opportunité :</strong> ${projectDetails.opp_status || "Inconnu"}</p>
-      <p><strong>Statut du projet :</strong> ${statusText}</p>
-      <p><strong>Montant opportunité :</strong> ${projectDetails.opp_amount || "Non défini"} €</p>
-      <p><strong>Budget :</strong> ${projectDetails.budget_amount || "Non défini"} €</p>
-      <p><strong>Date :</strong> ${startDate}</p>
-      <p><strong>Description :</strong> ${projectDetails.description || "Aucune description disponible"}</p>
-    `;
-    projectDetails.statusText = statusText;
-    // Affiche le bouton pour remplir un formulaire
-    fillFormButton.style.display = "inline-block";
-    // Stocke le projet en cours (utile pour le bouton)
-    fillFormButton.currentProject = projectDetails;
-  }
-   //  d’écouteur pour le bouton remplir un formulaire
-   /*fillFormButton.addEventListener("click", () => {
-    const project = fillFormButton.currentProject;
-
-    if (!project) return;
-    const params = new URLSearchParams({
-    firstname: project.title || "",
-    lastname: project.statusText,
-    zip: project.opp_status || "",
-    address: project.ref || "",
-    phone: project.budget_amount || ""
-  });
-    //déclenche la fonction pour remplir le formulaire de Iouston
-     console.log("Remplir formulaire avec le projet :", project);
-     // Redirige vers le formulaire avec les données dans l’URL
-     //console.log("Ouverture fenêtre");
-   const pageElement = document.getElementById("page");
-  if (!pageElement) {
-    console.error("L'élément #page est introuvable");
-    return;
-  }
-
-  const currentUrl = pageElement.textContent.trim(); // récupère l'URL ou texte dans #page
-
-  if (currentUrl.includes("iouston.com/contact-2")) {
-    remplirFormulaireIouston();
-  } else if (currentUrl.includes("inedis.com")) {
-    remplirFormulaireInedis();
-  } else {
-    console.log("Aucune fonction spécifique pour cette URL :", currentUrl);
-  }
-});*/
-  /*fillFormButton.addEventListener("click", () => {
-  const project = fillFormButton.currentProject;
-  if (!project) return;
-
-  const pageElement = document.getElementById("page");
-  if (!pageElement) {
-    console.error("L'élément #page est introuvable");
-    return;
-  }
-
-  const currentUrl = pageElement.textContent.trim();
-
-  if (currentUrl.includes("iouston.com/contact-2") || currentUrl.includes("inedis.com")) {
-    // Trouver l’onglet qui correspond à currentUrl
-    browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
-      if (tabs.length === 0) {
-        console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
-        return;
+   async function fetchThirdpartyName(id) {
+  try {
+    const response = await fetch(`${BASE_URL}/thirdparties/${id}`, {
+      headers: {
+        "DOLAPIKEY": API_KEY
       }
-      const tabActif = tabs[0];
-
-      let actionToSend = "";
-      if (currentUrl.includes("iouston.com/contact-2")) {
-        actionToSend = "remplirFormulaireIouston";
-      } else if (currentUrl.includes("inedis.com")) {
-        actionToSend = "remplirFormulaireInedis";
-      } else {
-          console.error("Cette extension ne prend pas encore en charge ce site :", currentUrl);
-            if (messageErreur) {
-              messageErreur.textContent = "Ce site n’est pas encore pris en charge par l’extension.";
-               messageErreur.style.display = "block";
-              }
-             return;
-            }
-
-      browser.tabs.sendMessage(tabActif.id, {
-        action: actionToSend,
-        data: {
-          firstname: project.title || "",
-          lastname: project.statusText,
-          zip: project.opp_status || "",
-          address: project.ref || "",
-          phone: project.budget_amount || ""
-        }
-      });
     });
-  } else {
-    console.log("Aucune fonction spécifique pour cette URL :", currentUrl);
+    const data = await response.json();
+    return data.name || "Inconnu";
+  } catch (error) {
+    console.error("Erreur récupération tiers :", error);
+    return "Erreur de chargement";
   }
-});*/
+}
+  async function displayProjectDetails(projectDetails) {
+  const startDate = projectDetails.date_c
+    ? new Date(projectDetails.date_c * 1000).toLocaleDateString()
+    : "Inconnue";
+
+  const defaultMapping = {
+    0: "Brouillon",
+    1: "Validé",
+    2: "Terminé"
+  };
+  const customMapping = JSON.parse(localStorage.getItem('statusMapping')) || {};
+  const statusMapping = { ...defaultMapping, ...customMapping };
+  const projectStatus = parseInt(projectDetails.status, 10);
+  const statusText = statusMapping[projectStatus] || "Inconnu";
+  const detailsContainer = document.getElementById("project-details");
+  // Appelle l'API pour récupérer le nom du tiers
+  console.log("Entity ID du projet :", projectDetails.entity);
+  const tiersName = await fetchThirdpartyName(projectDetails.socid);
+  console.log("ProjectDetails complet : ", projectDetails);
+  let extrafieldsHtml = "";
+  const extrafields = projectDetails.array_options || {};
+  for (const [key, value] of Object.entries(extrafields)) {
+    const fieldName = key.replace("options_", "");
+    extrafieldsHtml += `<p><strong>${fieldName} :</strong> ${value || "Non défini"}</p>`;
+  }
+  detailsContainer.innerHTML = `
+    <h3>Détails du projet</h3>
+    <p><strong>Réf. :</strong> ${projectDetails.ref || "Aucune"}</p>
+    <p><strong>Titre :</strong> ${projectDetails.title || "Aucune"}</p>
+    <p><strong>Usage :</strong> ${projectDetails.usage_opportunity || "Non définie"}</p>
+    <p><strong>Tierce partie :</strong> ${tiersName}</p>
+    <p><strong>Statut opportunité :</strong> ${projectDetails.opp_status || "Inconnu"}</p>
+    <p><strong>Statut du projet :</strong> ${statusText}</p>
+    <p><strong>Montant opportunité :</strong> ${projectDetails.opp_amount || "Non défini"} €</p>
+    <p><strong>Budget :</strong> ${projectDetails.budget_amount || "Non défini"} €</p>
+    <p><strong>Date :</strong> ${startDate}</p>
+    <p><strong>Description :</strong> ${projectDetails.description || "Aucune description disponible"}</p>
+    ${extrafieldsHtml || ""}
+  `;
+  console.log(projectDetails);
+  projectDetails.statusText = statusText;
+
+  fillFormButton.style.display = "inline-block";
+  fillFormButton.currentProject = projectDetails;
+}
+   //  d’écouteur pour le bouton remplir un formulaire
   fillFormButton.addEventListener("click", () => {
   const project = fillFormButton.currentProject;
   if (!project) return;
-
   const pageElement = document.getElementById("page");
   if (!pageElement) {
     console.error("L'élément #page est introuvable");
     return;
   }
-
   const currentUrl = pageElement.textContent.trim();
   const profilsUrl = {
   1:"https://www.iouston.com/contact-2/",
   2:"https://s-t-v.fr/",
-  3:"edf.fr"
+  3:"https://www.edf.fr/",
   };
   let currentkey;
   let pageok;
@@ -316,13 +263,8 @@ const mapping = {
     "message": "project.ref"
   }
 };
-
 // Récupérer le tableau de mapping depuis localstorage
 //const mappingJSON = localStorage.getItem('mapping');
-
-
-
-
   if (pageok==1) {
     browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
       if (tabs.length === 0) {
