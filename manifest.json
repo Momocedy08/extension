@@ -15,7 +15,10 @@
   ],
  "content_scripts": [
     {
-      "matches": ["https://www.iouston.com/contact-2/*"],
+      "matches": [
+        "https://www.iouston.com/contact-2/*",
+        "https://s-t-v.fr/*"
+      ],
       "js": ["form_injector.js"],
       "run_at": "document_idle"
     }

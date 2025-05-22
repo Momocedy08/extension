@@ -285,10 +285,11 @@
   const currentUrl = pageElement.textContent.trim();
   const profilsUrl = {
   1:"https://www.iouston.com/contact-2/",
-  2:"https://www.enedis.fr/",
+  2:"https://s-t-v.fr/",
   3:"edf.fr"
   };
   let currentkey;
+  let pageok;
 
 // Trouver la clé correspondant à currentURL
 const entry = Object.entries(profilsUrl).find(([key, url]) => url === currentUrl);
@@ -296,26 +297,25 @@ if (entry) {
   const [key, url] = entry;
   console.log(`URL trouvée avec la clé : ${key}`);
   currentkey=key;
+  pageok=1;
 } else {
+  pageok=0;
   console.log("URL non trouvée dans profilsUrl");
 }
   
 const mapping = {
   1: {
-    firstname: "project.title",
-    lastname: "project.statusText",
-    zip: "project.opp_status",
-    address: "project.ref",
-    phone: "project.budget_amount"
+    "input_1.3": "project.title",
+    "input_1.6": "project.statusText",
+    "input_3.5": "project.opp_status",
+    "input_3.1": "project.ref",
+    "input_4": "project.budget_amount"
   },
   2: {
-    champ3: "champdolibarr3",
-    champ4: "champdolibarr4"
+    "nom": "project.title",
+    "message": "project.ref"
   }
 };
-
-console.log(mapping[currentkey]);
-
 
 // Récupérer le tableau de mapping depuis localstorage
 //const mappingJSON = localStorage.getItem('mapping');
@@ -323,24 +323,30 @@ console.log(mapping[currentkey]);
 
 
 
-  if (currentUrl.includes("iouston.com/contact-2")) {
+  if (pageok==1) {
     browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
       if (tabs.length === 0) {
         console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
         return;
       }
       const tabActif = tabs[0];
-      let actionToSend = currentUrl.includes("iouston.com/contact-2") ? "remplirFormulaireIouston" : "remplirFormulaireInedis";
+      let actionToSend = "remplirFormulaire";
 
+      //On parse les champs pour écrire dynamiquement les données à envoyer au formulaire
+      const nosdata = {};
+      const map = mapping[currentkey];
+
+      for (const champFormulaire in map) {
+        const champDolibarr = map[champFormulaire];
+        nosdata[champFormulaire] = champDolibarr || "";
+      }
+      console.log("Projet envoyé :", project);
+      console.log("project.title =", project.title); // devrait afficher "test"
+      console.log("project.ref =", project.ref); 
       browser.tabs.sendMessage(tabActif.id, {
         action: actionToSend,
-        data: {
-          firstname: project.title || "",
-          lastname: project.statusText,
-          zip: project.opp_status || "",
-          address: project.ref || "",
-          phone: project.budget_amount || ""
-        }
+         data: nosdata,
+         project:project
       });
     });
   } else {

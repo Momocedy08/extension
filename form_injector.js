@@ -1,41 +1,39 @@
 // form_injector.js
 
-// Ecoute les messages depuis la popup
+// Écoute les messages envoyés depuis la popup
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "remplirFormulaireIouston") {
-    remplirFormulaireIouston(message.data);
-    sendResponse({ status: "iouston rempli" });
-  } else if (message.action === "remplirFormulaireInedis") {
-    remplirFormulaireInedis(message.data);
-    sendResponse({ status: "inedis rempli" });
+  if (message.action === "remplirFormulaire") {
+    remplirFormulaire(message.data, message.project);
+    sendResponse({ status: "formulaire rempli" });
   }
 });
 
-// Fonction pour remplir le formulaire Iouston
-function remplirFormulaireIouston(data) {
-  const { firstname, lastname, zip, address, phone } = data;
-
+// Fonction pour remplir dynamiquement les champs du formulaire
+function remplirFormulaire(data, project) {
   const tryFillForm = setInterval(() => {
-    const champPrenom = document.querySelector("input[name='input_1.3']");
-    const champNom = document.querySelector("input[name='input_1.6']");
-    const champAdresse = document.querySelector("input[name='input_3.5']");
-    const champCodePostal = document.querySelector("input[name='input_3.1']");
-    const champTelephone = document.querySelector("input[name='input_4']");
+    let allFilled = true;
 
-    if (champPrenom && champNom && champAdresse && champCodePostal && champTelephone) {
-      champPrenom.value = firstname || "";
-      champNom.value = lastname || "";
-      champAdresse.value = address || "";
-      champCodePostal.value = zip || "";
-      champTelephone.value = phone || "";
+    for (const champFormulaire in data) {
+      let valeur = data[champFormulaire];
 
-      console.log("Formulaire Iouston rempli !");
-      clearInterval(tryFillForm);
-    } else {
-      console.log("En attente du formulaire Iouston...");
+      if (typeof valeur === "string" && valeur.startsWith("project.")) {
+        const cle = valeur.split('.')[1];
+        valeur = project[cle] || "";
+      }
+
+      const champ = document.querySelector(`[name='${champFormulaire}']`);
+      if (champ) {
+        champ.value = valeur;
+        console.log(`Champ "${champFormulaire}" rempli avec : ${valeur}`);
+      } else {
+        console.warn(` Champ "${champFormulaire}" introuvable pour le moment`);
+        allFilled = false;
+      }
     }
-  }, 500);
 
-  // Arrête après 10s si le formulaire n'est pas prêt
-  setTimeout(() => clearInterval(tryFillForm), 10000);
+    if (allFilled) {
+      clearInterval(tryFillForm);
+      console.log("Tous les champs ont été remplis.");
+    }
+  }, 200); // on réessaie toutes les 200 ms jusqu'à ce que tous les champs soient là
 }
