@@ -103,6 +103,14 @@
     formContainer.style.display = 'none';
     alert("Statut ajouté !");
   });
+  // Bouton "Retour au projet"
+  document.getElementById("backToProjectBtn").addEventListener("click", () => {
+    const lastState = history.state;
+    if (lastState && lastState.project) {
+      displayProjectDetails(lastState.project);
+      document.getElementById("backToProjectBtn").style.display = "none";
+    }
+  });
   // --- FETCH DES PROJETS ---
   fetch(`${BASE_URL}/projects`, {
     method: "GET",
@@ -161,6 +169,7 @@
         alert(`Erreur : ${error.message}`);
       });
   }
+  //le nom du thirdparty
    async function fetchThirdpartyName(id) {
   try {
     const response = await fetch(`${BASE_URL}/thirdparties/${id}`, {
@@ -175,6 +184,82 @@
     return "Erreur de chargement";
   }
 }
+//*******************************************************
+  async function isMultiCompanyModuleEnabled() {
+  try {
+    const response = await fetch(`${BASE_URL}/setup/modules`, {
+      headers: {
+        "DOLAPIKEY": API_KEY,
+        "Accept": "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      console.error("Erreur HTTP lors de la vérification des modules :", response.status, response.statusText);
+      return false;
+    }
+
+    const modules = await response.json();
+
+    // Vérifie simplement si "multicompany" est présent dans la liste
+    return modules.includes("multicompany");
+
+  } catch (error) {
+    console.error("Erreur dans la vérification du module multisociété :", error);
+    return false;
+  }
+}
+//**************************************************************
+async function testMultiCompanyModule() {
+  const isEnabled = await isMultiCompanyModuleEnabled();
+  if (isEnabled) {
+    console.log("✅ Le module Multisociété est activé.");
+  } else {
+    console.log("❌ Le module Multisociété n'est PAS activé.");
+  }
+}
+testMultiCompanyModule(); // Appel immédiat
+//************************************************************************
+//fonction de recuperation des données de la compagnie dolibarr
+async function fetchCompanyDetails() {
+  try {
+    const response = await fetch(`${BASE_URL}/setup/company`, {
+      headers: {
+        "DOLAPIKEY": API_KEY,
+        "Accept": "application/json"
+      }
+    });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      console.error("Erreur HTTP :", response.status, response.statusText);
+      return null;
+    }
+
+    const data = JSON.parse(responseText);
+    return data;
+
+  } catch (error) {
+    console.error("Erreur dans fetchCompanyDetails :", error);
+    return null;
+  }
+}
+//fonction de recuperation des infos detaillés du tiers
+async function fetchThirdpartyDetails(id) {
+  try {
+    const response = await fetch(`${BASE_URL}/thirdparties/${id}`, {
+      headers: {
+        "DOLAPIKEY": API_KEY
+      }
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Erreur récupération détails tiers :", error);
+    return null;
+  }
+}
+
   async function displayProjectDetails(projectDetails) {
   const startDate = projectDetails.date_c
     ? new Date(projectDetails.date_c * 1000).toLocaleDateString()
@@ -190,9 +275,11 @@
   const projectStatus = parseInt(projectDetails.status, 10);
   const statusText = statusMapping[projectStatus] || "Inconnu";
   const detailsContainer = document.getElementById("project-details");
-  // Appelle l'API pour récupérer le nom du tiers
+   //Récupération des noms via API
   console.log("Entity ID du projet :", projectDetails.entity);
   const tiersName = await fetchThirdpartyName(projectDetails.socid);
+  //le nom de la compagnie
+  const compagnie = await fetchCompanyDetails();
   console.log("ProjectDetails complet : ", projectDetails);
   let extrafieldsHtml = "";
   const extrafields = projectDetails.array_options || {};
@@ -204,8 +291,8 @@
     <h3>Détails du projet</h3>
     <p><strong>Réf. :</strong> ${projectDetails.ref || "Aucune"}</p>
     <p><strong>Titre :</strong> ${projectDetails.title || "Aucune"}</p>
-    <p><strong>Usage :</strong> ${projectDetails.usage_opportunity || "Non définie"}</p>
-    <p><strong>Tierce partie :</strong> ${tiersName}</p>
+    <p><strong>Entité :</strong> <a href="#" id="company-link">${compagnie.name || "Non définie"}</a></p>
+    <p><strong>Tierce partie :</strong> <a href="#" id="tier-link">${tiersName || "Non définie"}</a></p>
     <p><strong>Statut opportunité :</strong> ${projectDetails.opp_status || "Inconnu"}</p>
     <p><strong>Statut du projet :</strong> ${statusText}</p>
     <p><strong>Montant opportunité :</strong> ${projectDetails.opp_amount || "Non défini"} €</p>
@@ -219,6 +306,53 @@
 
   fillFormButton.style.display = "inline-block";
   fillFormButton.currentProject = projectDetails;
+  //gérer le clic pour afficher les détails du tiers
+  document.getElementById("tier-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const thirdparty = await fetchThirdpartyDetails(projectDetails.socid);
+  if (thirdparty) {
+    history.pushState({ project: projectDetails }, "", "tiers");
+    displayThirdpartyDetails(thirdparty);
+    document.getElementById("backToProjectBtn").style.display = "inline-block";
+  }
+});
+  // Gérer le clic pour afficher les détails de la compagnie
+document.getElementById("company-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const company = await fetchCompanyDetails(); // <-- à créer comme fetchCompanyName mais retourne tout
+  if (company) {
+    history.pushState({ project: projectDetails }, "", "company");
+    displayCompanyDetails(company); // <-- à créer comme displayThirdpartyDetails
+    document.getElementById("backToProjectBtn").style.display = "inline-block";
+  }
+});
+}
+//afficher les details du tier
+  function displayThirdpartyDetails(tiers) {
+  const container = document.getElementById("project-details");
+  container.innerHTML = `
+    <h3>Détails du tiers</h3>
+    <p><strong>Nom :</strong> ${tiers.name || "Non défini"}</p>
+    <p><strong>Adresse :</strong> ${tiers.address || "Non définie"}</p>
+    <p><strong>Code postal :</strong> ${tiers.zip || ""} ${tiers.town || ""}</p>
+    <p><strong>Pays :</strong> ${tiers.country?.label || "Non défini"}</p>
+    <p><strong>Email :</strong> ${tiers.email || "Non défini"}</p>
+    <p><strong>Téléphone :</strong> ${tiers.phone || "Non défini"}</p>
+  `;
+}
+//afficher les details de la compagnie
+function displayCompanyDetails(company) {
+  const container = document.getElementById("project-details");
+  container.innerHTML = `
+    <h3>Détails de la société</h3>
+    <p><strong>Nom :</strong> ${company.name || "Non défini"}</p>
+    <p><strong>Adresse :</strong> ${company.address || "Non définie"}</p>
+    <p><strong>Téléphone :</strong> ${company.phone || "Non défini"}</p>
+    <p><strong>Email :</strong> ${company.email || "Non défini"}</p>
+    <p><strong>Managers :</strong> ${company.managers || "Non défini"}</p>
+    <p><strong>Capital :</strong> ${company.capital || "Non défini"} €</p>
+    <p><strong>SIRET :</strong> ${company.idprof2 || "Non défini"}</p>
+  `;
 }
    //  d’écouteur pour le bouton remplir un formulaire
   fillFormButton.addEventListener("click", () => {
