@@ -13,6 +13,13 @@
   const urlConfigBtn = document.getElementById("url_config");
   const menuConfig = document.getElementById("menu_config");
   const API_KEY = localStorage.getItem("API_KEY");
+  const entityInput = document.getElementById("entityInput");
+
+  //masquer le bouton d'entrer des entité 
+  const entityLabel = entityInput.closest("label");
+  if (entityLabel) {
+  entityLabel.style.display = "none"; // On cache au départ
+  }
 
   function showErrorMessage(message) {
     console.log("showErrorMessage called with:", message);
@@ -36,7 +43,7 @@
   }
   editConfigBtn.addEventListener("click", showConfigForm);
 
-  saveBtn.addEventListener("click", () => {
+  /*saveBtn.addEventListener("click", () => {
     const baseUrl = baseUrlInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
 
@@ -49,8 +56,44 @@
     localStorage.setItem("API_KEY", apiKey);
     alert("Configuration enregistrée !");
     location.reload();
-  });
+  });*/
+//************************************************************************
+  saveBtn.addEventListener("click", async () => {
+  const baseUrl = baseUrlInput.value.trim();
+  const apiKey = apiKeyInput.value.trim();
+  const entity = document.getElementById("entityInput").value.trim();
 
+  if (!baseUrl || !apiKey) {
+    alert("Merci de remplir les deux champs !");
+    return;
+  }
+
+  // On sauvegarde l'URL et la clé API
+  localStorage.setItem("BASE_URL", baseUrl);
+  localStorage.setItem("API_KEY", apiKey);
+
+  const isEnabled = await isMultiCompanyModuleEnabledWith(baseUrl, apiKey);
+  const entityLabel = document.getElementById("entityInput")?.closest("label");
+
+  if (isEnabled) {
+    if (entityLabel) {
+      entityLabel.style.display = "block";
+    }
+
+    // Si l'entité n'est pas encore renseignée, on attend
+    if (!entity) {
+      alert("Veuillez entrer l'entité, puis cliquez à nouveau sur Enregistrer.");
+      return;
+    }
+
+    // On sauvegarde l'entité pour s'en servir plus tard
+    localStorage.setItem("ENTITY", entity);
+  }
+
+  alert("Configuration enregistrée !");
+  location.reload(); // ou fetchProjectDetails() si tu préfères charger sans reload
+});
+//********************************************************************************
   if (!BASE_URL || !API_KEY) {
     showConfigForm();
     return;
@@ -58,6 +101,7 @@
     showMainContent();
     urlConfigBtn.style.display = "block";
   }
+  testMultiCompanyModule();//affichage de l'entrer
   //*************************************************************************
     // Toggle menu URLs
   urlConfigBtn.addEventListener("click", () => {
@@ -209,16 +253,41 @@
     return false;
   }
 }
+//***********************************************************************
+  async function isMultiCompanyModuleEnabledWith(baseUrl, apiKey) {
+  try {
+    const response = await fetch(`${baseUrl}/setup/modules`, {
+      headers: {
+        "DOLAPIKEY": apiKey,
+        "Accept": "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      console.error("Erreur HTTP lors de la vérification des modules :", response.status, response.statusText);
+      return false;
+    }
+
+    const modules = await response.json();
+    return modules.includes("multicompany");
+  } catch (error) {
+    console.error("Erreur dans la vérification du module multisociété :", error);
+    return false;
+  }
+}
 //**************************************************************
 async function testMultiCompanyModule() {
   const isEnabled = await isMultiCompanyModuleEnabled();
-  if (isEnabled) {
+
+  const entityLabel = document.getElementById("entityInput")?.closest("label");
+  
+  if (isEnabled && entityLabel) {
     console.log("✅ Le module Multisociété est activé.");
+    entityLabel.style.display = "block"; // Affiche le champ
   } else {
     console.log("❌ Le module Multisociété n'est PAS activé.");
   }
 }
-testMultiCompanyModule(); // Appel immédiat
 //************************************************************************
 //fonction de recuperation des données de la compagnie dolibarr
 async function fetchCompanyDetails() {
@@ -300,7 +369,7 @@ async function fetchThirdpartyDetails(id) {
     <p><strong>Date :</strong> ${startDate}</p>
     <p><strong>Description :</strong> ${projectDetails.description || "Aucune description disponible"}</p>
     ${extrafieldsHtml || ""}
-  `;
+  `;.
   console.log(projectDetails);
   projectDetails.statusText = statusText;
 
