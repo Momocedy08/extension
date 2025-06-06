@@ -369,7 +369,7 @@ async function fetchThirdpartyDetails(id) {
     <p><strong>Date :</strong> ${startDate}</p>
     <p><strong>Description :</strong> ${projectDetails.description || "Aucune description disponible"}</p>
     ${extrafieldsHtml || ""}
-  `;.
+  `;
   console.log(projectDetails);
   projectDetails.statusText = statusText;
 
