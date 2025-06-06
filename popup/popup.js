@@ -1,4 +1,4 @@
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
   // --- CONFIGURATION ---
   const configForm = document.getElementById("config-form");
   const mainContent = document.getElementById("main-content");
@@ -21,12 +21,19 @@
   entityLabel.style.display = "none"; // On cache au départ
   }
 
-  function showErrorMessage(message) {
-    console.log("showErrorMessage called with:", message);
+ function showErrorMessage(message) {
   const messageErreur = document.getElementById("messageErreur");
+  console.log("showErrorMessage appelé avec :", message);
+  console.log("messageErreur element:", messageErreur);
+
+  if (!messageErreur) {
+    console.error("L'élément #messageErreur est introuvable dans le DOM !");
+    return;
+  }
+
   messageErreur.textContent = message;
   messageErreur.style.display = "block";
-  // Optionnel : masquer automatiquement après 3 secondes
+
   setTimeout(() => {
     messageErreur.style.display = "none";
   }, 3000);
@@ -42,21 +49,6 @@
     mainContent.style.display = "block";
   }
   editConfigBtn.addEventListener("click", showConfigForm);
-
-  /*saveBtn.addEventListener("click", () => {
-    const baseUrl = baseUrlInput.value.trim();
-    const apiKey = apiKeyInput.value.trim();
-
-    if (!baseUrl || !apiKey) {
-      alert("Merci de remplir les deux champs !");
-      return;
-    }
-
-    localStorage.setItem("BASE_URL", baseUrl);
-    localStorage.setItem("API_KEY", apiKey);
-    alert("Configuration enregistrée !");
-    location.reload();
-  });*/
 //************************************************************************
   saveBtn.addEventListener("click", async () => {
   const baseUrl = baseUrlInput.value.trim();
@@ -85,6 +77,16 @@
       alert("Veuillez entrer l'entité, puis cliquez à nouveau sur Enregistrer.");
       return;
     }
+    // On Teste si l'entité est valide
+    const isValidEntity = await testEntityIsValid(baseUrl, apiKey, entity);
+    console.log("Validation entité...", isValidEntity);
+    if (!isValidEntity) {
+      console.log("Entity non valide détectée !");
+    showErrorMessage("Cette entité n'existe pas ou vous n'avez pas les droits !");
+    const list = document.getElementById("project-list");
+    list.innerHTML = `<li style="color:red;">Impossible de charger les projets.</li>`;
+    return; // On ne fetch pas les projets si l'entité n'est pas valide
+}
 
     // On sauvegarde l'entité pour s'en servir plus tard
     localStorage.setItem("ENTITY", entity);
@@ -156,52 +158,78 @@
     }
   });
   // --- FETCH DES PROJETS ---
-  fetch(`${BASE_URL}/projects`, {
-    method: "GET",
-    headers: {
-      "DOLAPIKEY": API_KEY,
-      "Content-Type": "application/json",
-      "Accept": "application/json"
+async function fetchProjectsIfEntityValid() {
+  const entity = localStorage.getItem("ENTITY");
+  console.log("🔄 fetchProjectsIfEntityValid: ENTITY =", entity);
+
+  const isEnabled = await isMultiCompanyModuleEnabledWith(BASE_URL, API_KEY);
+  console.log("🔎 isMultiCompanyModuleEnabledWith =", isEnabled);
+
+  if (isEnabled) {
+    const isValidEntity = await testEntityIsValid(BASE_URL, API_KEY, entity);
+    console.log("✅ Résultat de testEntityIsValid =", isValidEntity);
+
+    if (!isValidEntity) {
+      showErrorMessage("Cette entité n'existe pas ou vous n'avez pas les droits !");
+      return; // Ne pas fetch les projets si entité invalide
     }
+  }
+
+  // fetch des projets avec DOLAPIENTITY
+  const headers = await getHeaders();
+  console.log("🚀 Lancement du fetch des projets");
+
+  fetch(`${BASE_URL}/projects?DOLAPIENTITY=${entity}`, {
+    method: "GET",
+    headers
   })
-    .then(response => {
-      if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(data => {
-      const list = document.getElementById("project-list");
-      list.innerHTML = "";
-      data.forEach(project => {
-        const item = document.createElement("li");
+  .then(response => {
+    console.log("↩️ Réponse fetch projects status =", response.status);
 
-        const title = document.createElement("strong");
-        title.textContent = project.title || "Projet sans nom";
-        title.style.cursor = "pointer";
-        title.addEventListener("click", () => fetchProjectDetails(project.id));
+    if (response.status === 401) {
+      showErrorMessage("Vous n'avez pas les droits sur cette entité !");
+      throw new Error(`Erreur HTTP 401`);
+    }
 
-        const ref = document.createElement("div");
-        ref.textContent = "Réf : " + (project.ref || "Aucune");
-        ref.style.fontSize = "0.9em";
-        ref.style.color = "#555";
+    if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+    return response.json();
+  })
+  .then(data => {
+    const list = document.getElementById("project-list");
+    list.innerHTML = "";
 
-        item.appendChild(title);
-        item.appendChild(ref);
-        list.appendChild(item);
-      });
-    })
-    .catch(error => {
-      const list = document.getElementById("project-list");
-      list.innerHTML = `<li style="color:red;">Erreur : ${error.message}</li>`;
+    data.forEach(project => {
+      const item = document.createElement("li");
+
+      const title = document.createElement("strong");
+      title.textContent = project.title || "Projet sans nom";
+      title.style.cursor = "pointer";
+      title.addEventListener("click", () => fetchProjectDetails(project.id));
+
+      const ref = document.createElement("div");
+      ref.textContent = "Réf : " + (project.ref || "Aucune");
+      ref.style.fontSize = "0.9em";
+      ref.style.color = "#555";
+
+      item.appendChild(title);
+      item.appendChild(ref);
+      list.appendChild(item);
     });
-  function fetchProjectDetails(projectId) {
-    fetch(`${BASE_URL}/projects/${projectId}`, {
-      method: "GET",
-      headers: {
-        "DOLAPIKEY": API_KEY,
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      }
-    })
+  })
+  .catch(error => {
+    const list = document.getElementById("project-list");
+    list.innerHTML = `<li style="color:red;">Erreur : ${error.message}</li>`;
+    console.error("💥 Erreur dans fetch projects :", error);
+  });
+}
+await fetchProjectsIfEntityValid();
+
+  async function fetchProjectDetails(projectId) {
+    const headers = await getHeaders();
+fetch(`${BASE_URL}/projects/${projectId}`, {
+  method: "GET",
+  headers
+})
       .then(response => {
         if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
         return response.json();
@@ -216,11 +244,11 @@
   //le nom du thirdparty
    async function fetchThirdpartyName(id) {
   try {
+    const headers = await getHeaders();
     const response = await fetch(`${BASE_URL}/thirdparties/${id}`, {
-      headers: {
-        "DOLAPIKEY": API_KEY
-      }
-    });
+  method: "GET",
+  headers
+});
     const data = await response.json();
     return data.name || "Inconnu";
   } catch (error) {
@@ -229,31 +257,6 @@
   }
 }
 //*******************************************************
-  async function isMultiCompanyModuleEnabled() {
-  try {
-    const response = await fetch(`${BASE_URL}/setup/modules`, {
-      headers: {
-        "DOLAPIKEY": API_KEY,
-        "Accept": "application/json"
-      }
-    });
-
-    if (!response.ok) {
-      console.error("Erreur HTTP lors de la vérification des modules :", response.status, response.statusText);
-      return false;
-    }
-
-    const modules = await response.json();
-
-    // Vérifie simplement si "multicompany" est présent dans la liste
-    return modules.includes("multicompany");
-
-  } catch (error) {
-    console.error("Erreur dans la vérification du module multisociété :", error);
-    return false;
-  }
-}
-//***********************************************************************
   async function isMultiCompanyModuleEnabledWith(baseUrl, apiKey) {
   try {
     const response = await fetch(`${baseUrl}/setup/modules`, {
@@ -277,7 +280,7 @@
 }
 //**************************************************************
 async function testMultiCompanyModule() {
-  const isEnabled = await isMultiCompanyModuleEnabled();
+  const isEnabled = await isMultiCompanyModuleEnabledWith(BASE_URL, API_KEY);
 
   const entityLabel = document.getElementById("entityInput")?.closest("label");
   
@@ -288,17 +291,65 @@ async function testMultiCompanyModule() {
     console.log("❌ Le module Multisociété n'est PAS activé.");
   }
 }
+//fonction pour voir si l'entité existe ou pas 
+async function testEntityIsValid(baseUrl, apiKey, entity) {
+  console.log("➡️ testEntityIsValid appelé avec entity =", entity);
+  const headers = {
+    "DOLAPIKEY": apiKey,
+    "Content-Type": "application/json"
+  };
+
+  try {
+    const url = `${baseUrl}/projects?limit=1&DOLAPIENTITY=${entity}`;
+    console.log("🔍 Fetch vers URL:", url);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers
+    });
+
+    console.log("↩️ Réponse reçue avec status:", response.status);
+
+    if (response.status === 404) {
+      console.warn("⚠️ Entity non valide (404)");
+      return false; // entité non valide
+    }
+
+    if (!response.ok) {
+      console.error("❌ Réponse non OK dans testEntityIsValid:", response.status);
+      return false;
+    }
+
+    console.log("✅ Entity valide");
+    return true; // entité valide
+  } catch (error) {
+    console.error("💥 Erreur réseau dans testEntityIsValid:", error);
+    return false; // en cas d'erreur réseau, on considère que l'entité n'est pas valide
+  }
+}
+// Fonction utilitaire pour centraliser les headers (incluant éventuellement l'entité)
+async function getHeaders() {
+  const headers = {
+    "DOLAPIKEY": localStorage.getItem("API_KEY"),
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  };
+  const entity = localStorage.getItem("ENTITY");
+  if (entity) {
+    headers["DOLAPIENTITY"] = entity;
+  }
+  return headers;
+}
+
 //************************************************************************
 //fonction de recuperation des données de la compagnie dolibarr
 async function fetchCompanyDetails() {
   try {
+    const headers = await getHeaders();
     const response = await fetch(`${BASE_URL}/setup/company`, {
-      headers: {
-        "DOLAPIKEY": API_KEY,
-        "Accept": "application/json"
-      }
-    });
-
+  method: "GET",
+  headers
+});
     const responseText = await response.text();
     if (!response.ok) {
       console.error("Erreur HTTP :", response.status, response.statusText);
@@ -316,11 +367,11 @@ async function fetchCompanyDetails() {
 //fonction de recuperation des infos detaillés du tiers
 async function fetchThirdpartyDetails(id) {
   try {
+    const headers = await getHeaders();
     const response = await fetch(`${BASE_URL}/thirdparties/${id}`, {
-      headers: {
-        "DOLAPIKEY": API_KEY
-      }
-    });
+  method: "GET",
+  headers
+});
     const data = await response.json();
     return data;
   } catch (error) {
