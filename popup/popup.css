@@ -6,7 +6,6 @@ body {
   overflow-y: auto;
   background-color: #f9f9f9;
 }
-
 h1 {
   font-size: 1.4em;
   margin-bottom: 10px;
@@ -16,9 +15,6 @@ h8 {
   font-size: 1.4em;
   color: red;
 }
-
-
-/* CONFIGURATION */
 #config-section {
   background-color: #ffffff;
   border: 1px solid #ddd;
@@ -27,20 +23,17 @@ h8 {
   margin-bottom: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-
 #config-section h2 {
   font-size: 1.2em;
   margin-bottom: 10px;
   color: #333;
 }
-
 #config-form label {
   display: block;
   margin-bottom: 10px;
   font-weight: bold;
   color: #333;
 }
-
 #config-form input[type="text"] {
   width: 100%;
   padding: 6px;
@@ -48,7 +41,6 @@ h8 {
   border-radius: 4px;
   box-sizing: border-box;
 }
-
 #saveBtn {
   background-color: #007bff;
   color: white;
@@ -58,16 +50,13 @@ h8 {
   cursor: pointer;
   margin-top: 10px;
 }
-
 #saveBtn:hover {
   background-color: #0056b3;
 }
-
 #modify-config {
   margin-bottom: 20px;
   text-align: right;
 }
-
 #editConfigBtn {
   background-color: #f0ad4e;
   color: white;
@@ -76,18 +65,15 @@ h8 {
   border-radius: 4px;
   cursor: pointer;
 }
-
 #editConfigBtn:hover {
   background-color: #ec971f;
 }
-
 /* PROJETS */
 ul#project-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-
 ul#project-list li {
   background-color: #ffffff;
   border: 1px solid #ddd;
@@ -96,7 +82,6 @@ ul#project-list li {
   margin-bottom: 10px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
 ul#project-list li strong {
   display: block;
   font-size: 1.1em;
@@ -104,12 +89,10 @@ ul#project-list li strong {
   color: #000;
   cursor: pointer;
 }
-
 ul#project-list li div {
   font-size: 0.9em;
   color: #555;
 }
-
 #project-details {
   margin-top: 20px;
   background-color: #ffffff;
@@ -118,12 +101,10 @@ ul#project-list li div {
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
 #project-details h3 {
   font-size: 1.2em;
   margin-bottom: 10px;
 }
-
 #project-details p {
   font-size: 1em;
   margin: 5px 0;
@@ -138,20 +119,17 @@ ul#project-list li div {
   margin-top: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-
 #add-status-form-container h3 {
   font-size: 1.2em;
   margin-bottom: 10px;
   color: #333;
 }
-
 #add-status-form label {
   display: block;
   margin-bottom: 6px;
   font-weight: bold;
   color: #333;
 }
-
 #add-status-form input[type="text"] {
   width: 100%;
   padding: 6px;
@@ -160,7 +138,6 @@ ul#project-list li div {
   border-radius: 4px;
   box-sizing: border-box;
 }
-
 #add-status-form button[type="submit"] {
   background-color: #28a745;
   color: white;
@@ -169,11 +146,9 @@ ul#project-list li div {
   border-radius: 4px;
   cursor: pointer;
 }
-
 #add-status-form button[type="submit"]:hover {
   background-color: #218838;
 }
-
 #addStatusBtn {
   background-color: #17a2b8;
   color: white;
@@ -183,33 +158,26 @@ ul#project-list li div {
   cursor: pointer;
   margin-top: 10px;
 }
-
 #addStatusBtn:hover {
   background-color: #138496;
 }
 #messageErreur {
   display: none; /* caché par défaut */
-  
   position: fixed;  /* pour être fixe même en scroll */
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  
   background-color: #f8d7da; /* rouge clair */
   color: #721c24; /* rouge foncé */
-  
   padding: 15px 25px;
   border: 1px solid #f5c6cb;
   border-radius: 8px;
-  
   font-weight: bold;
   font-size: 1.1em;
   text-align: center;
-  
   z-index: 9999; /* très au-dessus de tout */
   width: 80%;  /* largeur adaptée */
   max-width: 400px; /* limite la largeur max */
   box-sizing: border-box;
-
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }

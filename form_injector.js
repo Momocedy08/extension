@@ -1,5 +1,4 @@
 // form_injector.js
-
 // Écoute les messages envoyés depuis la popup
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "remplirFormulaire") {
@@ -7,20 +6,16 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ status: "formulaire rempli" });
   }
 });
-
 // Fonction pour remplir dynamiquement les champs du formulaire
 function remplirFormulaire(data, project) {
   const tryFillForm = setInterval(() => {
     let allFilled = true;
-
     for (const champFormulaire in data) {
       let valeur = data[champFormulaire];
-
       if (typeof valeur === "string" && valeur.startsWith("project.")) {
         const cle = valeur.split('.')[1];
         valeur = project[cle] || "";
       }
-
       const champ = document.querySelector(`[name='${champFormulaire}']`);
       if (champ) {
         champ.value = valeur;
@@ -30,7 +25,6 @@ function remplirFormulaire(data, project) {
         allFilled = false;
       }
     }
-
     if (allFilled) {
       clearInterval(tryFillForm);
       console.log("Tous les champs ont été remplis.");
