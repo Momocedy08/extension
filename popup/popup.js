@@ -42,6 +42,7 @@
     mainContent.style.display = "block";
   }
   editConfigBtn.addEventListener("click", showConfigForm);
+//************************************************************************
   saveBtn.addEventListener("click", async () => {
   const baseUrl = baseUrlInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
@@ -161,10 +162,8 @@ async function fetchProjectsIfEntityValid() {
 
     const list = document.getElementById("project-list");
 list.innerHTML = "";
-
 for (const project of data) {
   const item = document.createElement("li");
-
   const title = document.createElement("strong");
   title.textContent = project.title || "Projet sans nom";
   title.style.cursor = "pointer";
@@ -172,15 +171,12 @@ for (const project of data) {
     const projectDetails = await fetchProjectDetails(project.id);
     displayProjectDetails(projectDetails);
   });
-
   const ref = document.createElement("div");
   ref.textContent = "Réf : " + (project.ref || "Aucune");
   ref.style.fontSize = "0.9em";
   ref.style.color = "#555";
-
   item.appendChild(title);
   item.appendChild(ref);
-
   // Afficher le nom du tiers et l’adresse extra field dès le début
     const tiersName = await await fetchThirdpartyName(project.socid);
     const tierName = document.createElement("div");
@@ -405,6 +401,8 @@ document.getElementById("company-link").addEventListener("click", async (e) => {
     document.getElementById("backToProjectBtn").style.display = "inline-block";
   }
 });
+fillFormButton.currentSource = "project";
+fillFormButton.currentData = projectDetails;
 }
 //afficher les details du tier
   function displayThirdpartyDetails(tiers) {
@@ -418,8 +416,11 @@ document.getElementById("company-link").addEventListener("click", async (e) => {
     <p><strong>Email :</strong> ${tiers.email || "Non défini"}</p>
     <p><strong>Téléphone :</strong> ${tiers.phone || "Non défini"}</p>
   `;
+  fillFormButton.currentSource = "tiers";
+  fillFormButton.currentData = tiers;
+  console.log("📦 Données de la compagnie :", fillFormButton.currentData);
+  console.log("📦 Source active :", fillFormButton.currentSource);
 }
-
 async function fetchCompanyExtraFieldsFromMulticompany(entityId) {
   try {
     const headers = await getHeaders();
@@ -427,12 +428,10 @@ async function fetchCompanyExtraFieldsFromMulticompany(entityId) {
       method: "GET",
       headers
     });
-
     if (!response.ok) {
       console.error("Erreur HTTP récupération extra fields via multicompany :", response.status);
       return {};
     }
-
     const data = await response.json();
     return data.array_options || {};
   } catch (error) {
@@ -453,10 +452,8 @@ async function displayCompanyDetails(company) {
     <p><strong>Capital :</strong> ${company.capital || "Non défini"} €</p>
     <p><strong>SIRET :</strong> ${company.idprof2 || "Non défini"}</p>
   `;
-
   const isMulticompanyEnabled = await isMultiCompanyModuleEnabled();
   const entity = localStorage.getItem("ENTITY") || "1";
-
   if (isMulticompanyEnabled) {
     const extraFields = await fetchCompanyExtraFieldsFromMulticompany(entity);
 
@@ -465,11 +462,18 @@ async function displayCompanyDetails(company) {
       container.innerHTML += `<p><strong>${label} :</strong> ${value || "Non défini"}</p>`;
     }
   }
+  fillFormButton.currentSource = "company";
+  fillFormButton.currentData = company;
 }
   // écouteur pour le bouton remplir un formulaire
+function resolvePath(obj, path) {
+  return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+}
   fillFormButton.addEventListener("click", () => {
-  const project = fillFormButton.currentProject;
-  if (!project) return;
+  const source = fillFormButton.currentSource;  // 'project', 'company' ou 'thirdparty'
+  const data = fillFormButton.currentData;      // l'objet correspondant (ex: company)
+  if (!data || !source) return;
+
   const pageElement = document.getElementById("page");
   if (!pageElement) {
     console.error("L'élément #page est introuvable");
@@ -477,55 +481,79 @@ async function displayCompanyDetails(company) {
   }
   const currentUrl = pageElement.textContent.trim();
   const profilsUrl = {
-  1:"https://www.iouston.com/contact-2/",
-  2:"https://s-t-v.fr/",
-  3:"https://www.edf.fr/",
+    1: "https://www.iouston.com/contact-2/",
+    2: "https://s-t-v.fr/",
+    3: "https://www.edf.fr/"
   };
   let currentkey;
   let pageok;
-// Trouver la clé correspondant à currentURL
-const entry = Object.entries(profilsUrl).find(([key, url]) => url === currentUrl);
-if (entry) {
-  const [key, url] = entry;
-  currentkey=key;
-  pageok=1;
-} else {
-  pageok=0;
-}
-const mapping = {
-  1: {
-    "input_1.3": "project.title",
-    "input_1.6": "project.statusText",
-    "input_3.5": "project.opp_status",
-    "input_3.1": "project.ref",
-    "input_4": "project.budget_amount"
-  },
-  2: {
-    "nom": "project.title",
-    "message": "project.ref"
+  const entry = Object.entries(profilsUrl).find(([key, url]) => url === currentUrl);
+  if (entry) {
+    const [key] = entry;
+    currentkey = key;
+    pageok = 1;
+  } else {
+    pageok = 0;
   }
-};
-// Récupérer le tableau de mapping depuis localstorage
-//const mappingJSON = localStorage.getItem('mapping');
-  if (pageok==1) {
+   const mapping = {
+    project: {
+      1: {
+        "input_1.3": "project.title",
+        "input_1.6": "project.statusText",
+        "input_3.5": "project.opp_status",
+        "input_3.1": "project.ref",
+        "input_4": "project.budget_amount"
+      },
+      2: {
+        "nom": "title",
+        "message": "ref"
+      }
+    },
+    company: {
+      1: {
+        "input_1.3": "company.name",
+        "input_4": "company.idprof2"
+      },
+      2: {
+        "nom": "name",
+        "message": "email"
+      }
+    },
+    tiers: {
+      1: {
+        "input_1.3": "tiers.name",
+        "input_4": "tiers.phone"
+      },
+      2: {
+        "nom": "name",
+        "message": "email"
+      }
+    }
+  };
+  if (pageok == 1) {
     browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
       if (tabs.length === 0) {
         console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
         return;
       }
       const tabActif = tabs[0];
-      let actionToSend = "remplirFormulaire";
-      //On parse les champs pour écrire dynamiquement les données à envoyer au formulaire
-      const nosdata = {};
-      const map = mapping[currentkey];
-      for (const champFormulaire in map) {
-        const champDolibarr = map[champFormulaire];
-        nosdata[champFormulaire] = champDolibarr || "";
+      const map = mapping[source]?.[currentkey];
+      if (!map) {
+        console.error("Aucun mapping défini pour cette source ou cette page.");
+        return;
       }
+      const nosdata = {};
+      for (const champFormulaire in map) {
+        const champObjet = map[champFormulaire];
+          nosdata[champFormulaire] = resolvePath({
+            project: fillFormButton.currentProject,
+            company: source === "company" ? data : null,
+            tiers: source === "tiers" ? data : null
+          }, champObjet) || "";      }
       browser.tabs.sendMessage(tabActif.id, {
-        action: actionToSend,
-         data: nosdata,
-         project:project
+        action: "remplirFormulaire",
+        data: nosdata,
+        project: fillFormButton.currentProject  // on envoie le projet si besoin
       });
     });
   } else {
