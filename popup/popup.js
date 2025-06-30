@@ -29,7 +29,7 @@
 
   setTimeout(() => {
     messageErreur.style.display = "none";
-  }, 3000);
+  }, 6000);
 }
   function showConfigForm() {
     configForm.style.display = "block";
@@ -42,7 +42,6 @@
     mainContent.style.display = "block";
   }
   editConfigBtn.addEventListener("click", showConfigForm);
-//************************************************************************
   saveBtn.addEventListener("click", async () => {
   const baseUrl = baseUrlInput.value.trim();
   const apiKey = apiKeyInput.value.trim();
@@ -168,9 +167,13 @@ for (const project of data) {
   title.textContent = project.title || "Projet sans nom";
   title.style.cursor = "pointer";
   title.addEventListener("click", async () => {
-    const projectDetails = await fetchProjectDetails(project.id);
-    displayProjectDetails(projectDetails);
-  });
+  const projectDetails = await fetchProjectDetails(project.id);
+  if (!projectDetails) {
+    console.warn("Aucun détail trouvé pour le projet", project.id);
+    return;
+  }
+  displayProjectDetails(projectDetails);
+});
   const ref = document.createElement("div");
   ref.textContent = "Réf : " + (project.ref || "Aucune");
   ref.style.fontSize = "0.9em";
@@ -195,22 +198,20 @@ for (const project of data) {
 }
 await fetchProjectsIfEntityValid();
   async function fetchProjectDetails(projectId) {
-    const headers = await getHeaders();
-fetch(`${BASE_URL}/projects/${projectId}`, {
-  method: "GET",
-  headers
-})
-      .then(response => {
-        if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
-        return response.json();
-      })
-      .then(project => {
-        displayProjectDetails(project);
-      })
-      .catch(error => {
-        alert(`Erreur : ${error.message}`);
-      });
+  const headers = await getHeaders();
+  try {
+    const response = await fetch(`${BASE_URL}/projects/${projectId}`, {
+      method: "GET",
+      headers
+    });
+    if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+    const project = await response.json();
+    return project; //  on retourne les données
+  } catch (error) {
+    alert(`Erreur : ${error.message}`);
+    return null; // erreur, on retourne null
   }
+}
   //le nom du thirdparty
    async function fetchThirdpartyName(id) {
   try {
@@ -341,9 +342,15 @@ async function fetchThirdpartyDetails(id) {
   }
 }
   async function displayProjectDetails(projectDetails) {
+   if (!projectDetails) {
+    console.warn("displayProjectDetails: projectDetails est undefined.");
+    return;
+  }
+  console.log("projectDetails =", projectDetails);
   const startDate = projectDetails.date_c
     ? new Date(projectDetails.date_c * 1000).toLocaleDateString()
     : "Inconnue";
+
   const defaultMapping = {
     0: "Brouillon",
     1: "Validé",
@@ -354,16 +361,18 @@ async function fetchThirdpartyDetails(id) {
   const projectStatus = parseInt(projectDetails.status, 10);
   const statusText = statusMapping[projectStatus] || "Inconnu";
   const detailsContainer = document.getElementById("project-details");
-  //Récupération des noms via API
-  const tiersName = await fetchThirdpartyName(projectDetails.socid);
-  //le nom de la compagnie
+  // Récupération des noms via API
+  const tiers = await fetchThirdpartyDetails(projectDetails.socid);
+  const tiersName = tiers?.name || "Non défini";
   const compagnie = await fetchCompanyDetails();
+  // Extra fields
   let extrafieldsHtml = "";
   const extrafields = projectDetails.array_options || {};
   for (const [key, value] of Object.entries(extrafields)) {
-  const fieldName = key.replace("options_", "");
-  extrafieldsHtml += `<p><strong>${fieldName} :</strong> ${value || "Non défini"}</p>`;
+    const fieldName = key.replace("options_", "");
+    extrafieldsHtml += `<p><strong>${fieldName} :</strong> ${value || "Non défini"}</p>`;
   }
+  // Affichage des détails du projet
   detailsContainer.innerHTML = `
     <h3>Détails du projet</h3>
     <p><strong>Réf. :</strong> ${projectDetails.ref || "Aucune"}</p>
@@ -378,31 +387,37 @@ async function fetchThirdpartyDetails(id) {
     <p><strong>Description :</strong> ${projectDetails.description || "Aucune description disponible"}</p>
     ${extrafieldsHtml || ""}
   `;
-  projectDetails.statusText = statusText;
+  // Mise à jour de l'état global pour le bouton
+  fillFormButton.state = {
+    project: { ...projectDetails, statusText },
+    company: compagnie,
+    tiers: tiers,
+    source: "project"
+  };
+  // Affiche le bouton
   fillFormButton.style.display = "inline-block";
-  fillFormButton.currentProject = projectDetails;
-  //gérer le clic pour afficher les détails du tiers
+
+  // Clic sur le lien du tiers
   document.getElementById("tier-link").addEventListener("click", async (e) => {
-  e.preventDefault();
-  const thirdparty = await fetchThirdpartyDetails(projectDetails.socid);
-  if (thirdparty) {
-    history.pushState({ project: projectDetails }, "", "tiers");
-    displayThirdpartyDetails(thirdparty);
-    document.getElementById("backToProjectBtn").style.display = "inline-block";
-  }
-});
-  // Gérer le clic pour afficher les détails de la compagnie
-document.getElementById("company-link").addEventListener("click", async (e) => {
-  e.preventDefault();
-  const company = await fetchCompanyDetails(); // 
-  if (company) {
+    e.preventDefault();
+    const thirdparty = await fetchThirdpartyDetails(projectDetails.socid);
+    if (thirdparty) {
+      history.pushState({ project: projectDetails }, "", "tiers");
+      displayThirdpartyDetails(thirdparty);
+      document.getElementById("backToProjectBtn").style.display = "inline-block";
+      fillFormButton.state.tiers = thirdparty;
+      fillFormButton.state.source = "tiers";
+    }
+  });
+
+  // Clic sur le lien de la compagnie
+  document.getElementById("company-link").addEventListener("click", async (e) => {
+    e.preventDefault();
     history.pushState({ project: projectDetails }, "", "company");
-    displayCompanyDetails(company); 
+    displayCompanyDetails(compagnie);
     document.getElementById("backToProjectBtn").style.display = "inline-block";
-  }
-});
-fillFormButton.currentSource = "project";
-fillFormButton.currentData = projectDetails;
+    fillFormButton.state.source = "company";
+  });
 }
 //afficher les details du tier
   function displayThirdpartyDetails(tiers) {
@@ -418,8 +433,6 @@ fillFormButton.currentData = projectDetails;
   `;
   fillFormButton.currentSource = "tiers";
   fillFormButton.currentData = tiers;
-  console.log("📦 Données de la compagnie :", fillFormButton.currentData);
-  console.log("📦 Source active :", fillFormButton.currentSource);
 }
 async function fetchCompanyExtraFieldsFromMulticompany(entityId) {
   try {
@@ -470,10 +483,13 @@ function resolvePath(obj, path) {
   return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 }
   fillFormButton.addEventListener("click", () => {
-  const source = fillFormButton.currentSource;  // 'project', 'company' ou 'thirdparty'
-  const data = fillFormButton.currentData;      // l'objet correspondant (ex: company)
-  if (!data || !source) return;
+  const state = fillFormButton.state || {};
+  const { source, project, tiers, company } = state;
 
+  if (!source || !project) {
+    console.error("Données manquantes ou source non définie.");
+    return;
+  }
   const pageElement = document.getElementById("page");
   if (!pageElement) {
     console.error("L'élément #page est introuvable");
@@ -482,84 +498,49 @@ function resolvePath(obj, path) {
   const currentUrl = pageElement.textContent.trim();
   const profilsUrl = {
     1: "https://www.iouston.com/contact-2/",
-    2: "https://s-t-v.fr/",
-    3: "https://www.edf.fr/"
+    2: "https://s-t-v.fr/"
   };
-  let currentkey;
-  let pageok;
-  const entry = Object.entries(profilsUrl).find(([key, url]) => url === currentUrl);
-  if (entry) {
-    const [key] = entry;
-    currentkey = key;
-    pageok = 1;
-  } else {
-    pageok = 0;
-  }
-   const mapping = {
-    project: {
-      1: {
-        "input_1.3": "project.title",
-        "input_1.6": "project.statusText",
-        "input_3.5": "project.opp_status",
-        "input_3.1": "project.ref",
-        "input_4": "project.budget_amount"
-      },
-      2: {
-        "nom": "title",
-        "message": "ref"
-      }
-    },
-    company: {
-      1: {
-        "input_1.3": "company.name",
-        "input_4": "company.idprof2"
-      },
-      2: {
-        "nom": "name",
-        "message": "email"
-      }
-    },
-    tiers: {
-      1: {
-        "input_1.3": "tiers.name",
-        "input_4": "tiers.phone"
-      },
-      2: {
-        "nom": "name",
-        "message": "email"
-      }
-    }
-  };
-  if (pageok == 1) {
-    browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
-      if (tabs.length === 0) {
-        console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
-        return;
-      }
-      const tabActif = tabs[0];
-      const map = mapping[source]?.[currentkey];
-      if (!map) {
-        console.error("Aucun mapping défini pour cette source ou cette page.");
-        return;
-      }
-      const nosdata = {};
-      for (const champFormulaire in map) {
-        const champObjet = map[champFormulaire];
-          nosdata[champFormulaire] = resolvePath({
-            project: fillFormButton.currentProject,
-            company: source === "company" ? data : null,
-            tiers: source === "tiers" ? data : null
-          }, champObjet) || "";      }
-      browser.tabs.sendMessage(tabActif.id, {
-        action: "remplirFormulaire",
-        data: nosdata,
-        project: fillFormButton.currentProject  // on envoie le projet si besoin
-      });
-    });
-  } else {
+  const entry = Object.entries(profilsUrl).find(([_, url]) => url === currentUrl);
+  if (!entry) {
     console.error("Cette extension ne prend pas encore en charge ce site :", currentUrl);
     showErrorMessage("cette url n'est pas prise en charge !");
+    return;
   }
+  const [currentKey] = entry;
+  const mappings = {
+    1: {
+      "input_1.3": "project.title",
+      "input_3.5": "project.opp_status",
+      "input_3.1": "tiers.address",
+      "input_1.6": "company.name",
+      "input_4": "company.idprof2"
+    },
+    2: {
+      "nom": "project.title",
+      "message": "tiers.email"
+    }
+  };
+  const map = mappings[currentKey];
+  if (!map) {
+    console.error("Aucun mapping défini pour cette page.");
+    return;
+  }
+  const nosdata = {};
+  for (const champFormulaire in map) {
+    const fullPath = map[champFormulaire]; // ex: "project.title"
+    nosdata[champFormulaire] = resolvePath({ project, company, tiers }, fullPath) || "";
+  }
+  browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
+    if (tabs.length === 0) {
+      console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
+      return;
+    }
+    const tabActif = tabs[0];
+    browser.tabs.sendMessage(tabActif.id, {
+      action: "remplirFormulaire",
+      data: nosdata,
+      project
+    });
+  });
 });
-});
-  
+}); 
