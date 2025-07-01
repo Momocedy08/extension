@@ -1,5 +1,5 @@
   document.addEventListener("DOMContentLoaded", async () => {
-  // --- CONFIGURATION ---
+  //--- CONFIGURATION ---
   const configForm = document.getElementById("config-form");
   const mainContent = document.getElementById("main-content");
   const saveBtn = document.getElementById("saveBtn");
@@ -50,7 +50,7 @@
     alert("Merci de remplir les deux champs !");
     return;
   }
-  // On sauvegarde l'URL et la clé API
+  //On sauvegarde l'URL et la clé API
   localStorage.setItem("BASE_URL", baseUrl);
   localStorage.setItem("API_KEY", apiKey);
   const isEnabled = await isMultiCompanyModuleEnabledWith(baseUrl, apiKey);
@@ -59,12 +59,12 @@
     if (entityLabel) {
       entityLabel.style.display = "block";
     }
-    // Si l'entité n'est pas encore renseignée, on attend
+    //Si l'entité n'est pas encore renseignée, on attend
     if (!entity) {
       alert("Veuillez entrer l'entité, puis cliquez à nouveau sur Enregistrer.");
       return;
     }
-    // On Teste si l'entité est valide
+    //On Teste si l'entité est valide
     const isValidEntity = await testEntityIsValid(baseUrl, apiKey, entity);
     if (!isValidEntity) {
     showErrorMessage("Cette entité n'existe pas ou vous n'avez pas les droits !");
@@ -72,7 +72,7 @@
     list.innerHTML = `<li style="color:red;">Impossible de charger les projets.</li>`;
     return; // On ne fetch pas les projets si l'entité n'est pas valide
 }
-    // On sauvegarde l'entité pour s'en servir plus tard
+    //On sauvegarde l'entité pour s'en servir plus tard
     localStorage.setItem("ENTITY", entity);
   }
   alert("Configuration enregistrée !");
@@ -90,18 +90,37 @@
   urlConfigBtn.addEventListener("click", () => {
     menuConfig.style.display = menuConfig.style.display === "none" ? "block" : "none";
   });
-  // afficher/ajouter URL
-  document.getElementById("btn_afficher_urls").addEventListener("click", () => {
-    alert("Fonction à implémenter : afficher les URLs enregistrées.");
+  //afficher/ajouter URL
+  document.getElementById("btn_ajouter_urls").addEventListener("click", () => {
+  const profilsUrl = JSON.parse(localStorage.getItem("profilsUrl")) || {
+    1: "https://www.iouston.com/contact-2/",
+    2: "https://s-t-v.fr/"
+  };
+  const pageElement = document.getElementById("page");
+  if (!pageElement) {
+    showError("Impossible de récupérer la page active");
+    return;
+  }
+  const currentUrl = pageElement.textContent.trim();
+  //Vérifie si l'url existe déjà dans profilsUrl
+  const exists = Object.values(profilsUrl).includes(currentUrl);
+  if (exists) {
+    showErrorMessage("Cette URL est déjà enregistrée."); 
+    return;
+  }
+  //Sinon, on affiche le formulaire d'ajout
+  showAddUrlForm(currentUrl);
+});
+  document.getElementById("btn_modifier_urls").addEventListener("click", () => {
+    alert("Fonction à implémenter : modifier les URLs");
   });
-  document.getElementById("btn_ajouter_url").addEventListener("click", () => {
-    alert("Fonction à implémenter : formulaire pour ajouter une nouvelle URL et son mapping.");
+  document.getElementById("btn_supprimer_urls").addEventListener("click", () => {
+    alert("supprimer les URLs");
   });
-  // --- STATUT PERSO ---
+  //--- STATUT PERSO ---
   const addStatusBtn = document.getElementById('addStatusBtn');
   const formContainer = document.getElementById('add-status-form-container');
   const statusForm = document.getElementById('add-status-form');
-
   addStatusBtn.addEventListener('click', () => {
     formContainer.style.display = formContainer.style.display === 'none' ? 'block' : 'none';
   });
@@ -124,7 +143,7 @@
     formContainer.style.display = 'none';
     alert("Statut ajouté !");
   });
-  // Bouton "Retour au projet"
+  //Bouton "Retour au projet"
   document.getElementById("backToProjectBtn").addEventListener("click", () => {
     const lastState = history.state;
     if (lastState && lastState.project) {
@@ -132,7 +151,7 @@
       document.getElementById("backToProjectBtn").style.display = "none";
     }
   });
-  // --- FETCH DES PROJETS ---
+  //--- FETCH DES PROJETS ---
 async function fetchProjectsIfEntityValid() {
   const entity = localStorage.getItem("ENTITY");
   const isEnabled = await isMultiCompanyModuleEnabledWith(BASE_URL, API_KEY);
@@ -143,7 +162,7 @@ async function fetchProjectsIfEntityValid() {
       return; // Ne pas fetch les projets si entité invalide
     }
   }
-  // fetch des projets avec DOLAPIENTITY
+  //fetch des projets avec DOLAPIENTITY
   const headers = await getHeaders();
   fetch(`${BASE_URL}/projects?DOLAPIENTITY=${entity}`, {
     method: "GET",
@@ -180,7 +199,7 @@ for (const project of data) {
   ref.style.color = "#555";
   item.appendChild(title);
   item.appendChild(ref);
-  // Afficher le nom du tiers et l’adresse extra field dès le début
+  //Afficher le nom du tiers et l’adresse extra field dès le début
     const tiersName = await await fetchThirdpartyName(project.socid);
     const tierName = document.createElement("div");
     tierName.textContent = "Client : " + tiersName;
@@ -247,7 +266,7 @@ await fetchProjectsIfEntityValid();
     return false;
   }
 }
-// Wrapper sans paramètre 
+//Wrapper sans paramètre 
 async function isMultiCompanyModuleEnabled() {
   const baseUrl = localStorage.getItem("BASE_URL");
   const apiKey = localStorage.getItem("API_KEY");
@@ -293,7 +312,7 @@ async function testEntityIsValid(baseUrl, apiKey, entity) {
     return false; // en cas d'erreur réseau, on considère que l'entité n'est pas valide
   }
 }
-// Fonction utilitaire pour centraliser les headers (incluant éventuellement l'entité)
+//Fonction utilitaire pour centraliser les headers (incluant éventuellement l'entité)
 async function getHeaders() {
   const headers = {
     "DOLAPIKEY": localStorage.getItem("API_KEY"),
@@ -387,17 +406,16 @@ async function fetchThirdpartyDetails(id) {
     <p><strong>Description :</strong> ${projectDetails.description || "Aucune description disponible"}</p>
     ${extrafieldsHtml || ""}
   `;
-  // Mise à jour de l'état global pour le bouton
+  //Mise à jour de l'état global pour le bouton
   fillFormButton.state = {
     project: { ...projectDetails, statusText },
     company: compagnie,
     tiers: tiers,
     source: "project"
   };
-  // Affiche le bouton
+  //Affiche le bouton
   fillFormButton.style.display = "inline-block";
-
-  // Clic sur le lien du tiers
+  //Clic sur le lien du tiers
   document.getElementById("tier-link").addEventListener("click", async (e) => {
     e.preventDefault();
     const thirdparty = await fetchThirdpartyDetails(projectDetails.socid);
@@ -409,8 +427,7 @@ async function fetchThirdpartyDetails(id) {
       fillFormButton.state.source = "tiers";
     }
   });
-
-  // Clic sur le lien de la compagnie
+  //Clic sur le lien de la compagnie
   document.getElementById("company-link").addEventListener("click", async (e) => {
     e.preventDefault();
     history.pushState({ project: projectDetails }, "", "company");
@@ -431,8 +448,6 @@ async function fetchThirdpartyDetails(id) {
     <p><strong>Email :</strong> ${tiers.email || "Non défini"}</p>
     <p><strong>Téléphone :</strong> ${tiers.phone || "Non défini"}</p>
   `;
-  fillFormButton.currentSource = "tiers";
-  fillFormButton.currentData = tiers;
 }
 async function fetchCompanyExtraFieldsFromMulticompany(entityId) {
   try {
@@ -475,10 +490,8 @@ async function displayCompanyDetails(company) {
       container.innerHTML += `<p><strong>${label} :</strong> ${value || "Non défini"}</p>`;
     }
   }
-  fillFormButton.currentSource = "company";
-  fillFormButton.currentData = company;
 }
-  // écouteur pour le bouton remplir un formulaire
+  //écouteur pour le bouton remplir un formulaire
 function resolvePath(obj, path) {
   return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 }
@@ -496,10 +509,10 @@ function resolvePath(obj, path) {
     return;
   }
   const currentUrl = pageElement.textContent.trim();
-  const profilsUrl = {
-    1: "https://www.iouston.com/contact-2/",
-    2: "https://s-t-v.fr/"
-  };
+  const profilsUrl = JSON.parse(localStorage.getItem("profilsUrl")) || {
+  1: "https://www.iouston.com/contact-2/",
+  2: "https://s-t-v.fr/"
+};
   const entry = Object.entries(profilsUrl).find(([_, url]) => url === currentUrl);
   if (!entry) {
     console.error("Cette extension ne prend pas encore en charge ce site :", currentUrl);
@@ -507,19 +520,19 @@ function resolvePath(obj, path) {
     return;
   }
   const [currentKey] = entry;
-  const mappings = {
-    1: {
-      "input_1.3": "project.title",
-      "input_3.5": "project.opp_status",
-      "input_3.1": "tiers.address",
-      "input_1.6": "company.name",
-      "input_4": "company.idprof2"
-    },
-    2: {
-      "nom": "project.title",
-      "message": "tiers.email"
-    }
-  };
+  const mappings = JSON.parse(localStorage.getItem("mappings")) || {
+  1: {
+    "input_1.3": "project.title",
+    "input_3.5": "project.opp_status",
+    "input_3.1": "tiers.address",
+    "input_1.6": "company.name",
+    "input_4": "company.idprof2"
+  },
+  2: {
+    "nom": "project.title",
+    "message": "tiers.email"
+  }
+};
   const map = mappings[currentKey];
   if (!map) {
     console.error("Aucun mapping défini pour cette page.");
@@ -530,7 +543,7 @@ function resolvePath(obj, path) {
     const fullPath = map[champFormulaire]; // ex: "project.title"
     nosdata[champFormulaire] = resolvePath({ project, company, tiers }, fullPath) || "";
   }
-  browser.tabs.query({ url: `*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
+  browser.tabs.query({ url:`*://${new URL(currentUrl).hostname}/*` }).then(tabs => {
     if (tabs.length === 0) {
       console.error("Aucun onglet ne correspond à cette URL :", currentUrl);
       return;
