@@ -1,3 +1,9 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
 body {
   font-family: Arial, sans-serif;
   padding: 10px;
@@ -42,7 +48,7 @@ h8 {
   box-sizing: border-box;
 }
 #saveBtn {
-  background-color: #007bff;
+  background-color: green;
   color: white;
   padding: 8px 12px;
   border: none;
@@ -51,23 +57,51 @@ h8 {
   margin-top: 10px;
 }
 #saveBtn:hover {
-  background-color: #0056b3;
+  background-color: gray;
 }
 #modify-config {
   margin-bottom: 20px;
-  text-align: right;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
 }
-#editConfigBtn {
-  background-color: #f0ad4e;
+
+#modify-config button {
+  background-color: green;
   color: white;
-  padding: 6px 10px;
+  padding: 8px 16px;
+  min-width: 160px;
   border: none;
   border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: center;
 }
-#editConfigBtn:hover {
-  background-color: #ec971f;
+
+#modify-config button:hover {
+  background-color: gray;
 }
+#top-buttons button {
+  background-color: #6c757d;
+  color: white;
+  padding: 8px 14px;
+  min-width: 140px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#top-buttons button:hover {
+  background-color: gray;
+}
+
+
 /* PROJETS */
 ul#project-list {
   list-style: none;
@@ -139,7 +173,7 @@ ul#project-list li div {
   box-sizing: border-box;
 }
 #add-status-form button[type="submit"] {
-  background-color: #28a745;
+  background-color: green;
   color: white;
   padding: 8px 12px;
   border: none;
@@ -147,20 +181,9 @@ ul#project-list li div {
   cursor: pointer;
 }
 #add-status-form button[type="submit"]:hover {
-  background-color: #218838;
+  background-color: gray;
 }
-#addStatusBtn {
-  background-color: #17a2b8;
-  color: white;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 10px;
-}
-#addStatusBtn:hover {
-  background-color: #138496;
-}
+
 #messageErreur {
   display: none; /* caché par défaut */
   position: fixed;  /* pour être fixe même en scroll */
@@ -181,3 +204,71 @@ ul#project-list li div {
   box-sizing: border-box;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
+/* ===== Formulaire d'ajout de mapping ===== */
+.form-mapping-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow-y: auto;
+  background-color: #fff;
+}
+
+.url-label {
+  font-weight: bold;
+  font-size: 1em;
+  color: #333;
+}
+
+.mapping-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-form, .input-dolibarr {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.btn-save-mapping {
+  background-color: green;
+  color: white;
+  padding: 10px;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-save-mapping:hover {
+  background-color: gray;
+}
+#menu_config button {
+  background-color: green; 
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  margin-right: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+}
+
+#menu_config button:hover {
+  background-color: gray;
+}
+.possible-values-hint {
+  font-size: 0.75rem;
+  color: darkgrey;
+  margin-top: 4px;
+}
+#btn_ajouter_urls,
+#btn_modifier_urls,
+#btn_supprimer_urls {
+  display: none;
+}
+

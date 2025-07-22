@@ -1,7 +1,9 @@
 // form_injector.js
 // Écoute les messages envoyés depuis la popup
+console.log("contentScript injecté sur cette page !");
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "remplirFormulaire") {
+    console.log("Message reçu pour remplir le formulaire :", message);
     remplirFormulaire(message.data, message.project);
     sendResponse({ status: "formulaire rempli" });
   }
@@ -31,3 +33,4 @@ function remplirFormulaire(data, project) {
     }
   }, 200); // on réessaie toutes les 200 ms jusqu'à ce que tous les champs soient là
 }
+

@@ -8,11 +8,21 @@
   const apiKeyInput = document.getElementById("apiKey");
   const cancelBtn = document.getElementById('cancelStatusBtn');
   const fillFormButton = document.getElementById("fillFormButton");
-  const BASE_URL = localStorage.getItem("BASE_URL");
-  const urlConfigBtn = document.getElementById("url_config");
-  const menuConfig = document.getElementById("menu_config");
-  const API_KEY = localStorage.getItem("API_KEY");
+  const BASE_URL = await browser.storage.local.get("BASE_URL").then(res => res.BASE_URL || "");  
+  const API_KEY = await browser.storage.local.get("API_KEY").then(res => res.API_KEY || "");
   const entityInput = document.getElementById("entityInput");
+  const toggleSettingsBtn = document.getElementById("toggleSettingsBtn");
+  const modifyConfigBlock = document.getElementById("modify-config");
+  
+
+  toggleSettingsBtn.addEventListener("click", () => {
+    if (modifyConfigBlock.style.display === "none") {
+      modifyConfigBlock.style.display = "flex";
+    } else {
+      modifyConfigBlock.style.display = "none";
+    }
+  });
+
   //masquer le bouton d'entrer des entité 
   const entityLabel = entityInput.closest("label");
   if (entityLabel) {
@@ -26,7 +36,6 @@
   }
   messageErreur.textContent = message;
   messageErreur.style.display = "block";
-
   setTimeout(() => {
     messageErreur.style.display = "none";
   }, 6000);
@@ -51,8 +60,8 @@
     return;
   }
   //On sauvegarde l'URL et la clé API
-  localStorage.setItem("BASE_URL", baseUrl);
-  localStorage.setItem("API_KEY", apiKey);
+  browser.storage.local.set({ BASE_URL: baseUrl });  
+  browser.storage.local.set({ API_KEY: apiKey });
   const isEnabled = await isMultiCompanyModuleEnabledWith(baseUrl, apiKey);
   const entityLabel = document.getElementById("entityInput")?.closest("label");
   if (isEnabled) {
@@ -73,7 +82,7 @@
     return; // On ne fetch pas les projets si l'entité n'est pas valide
 }
     //On sauvegarde l'entité pour s'en servir plus tard
-    localStorage.setItem("ENTITY", entity);
+   browser.storage.local.set({ ENTITY: entity });
   }
   alert("Configuration enregistrée !");
   location.reload();
@@ -83,40 +92,656 @@
     return;
   } else {
     showMainContent();
-    urlConfigBtn.style.display = "block";
   }
   testMultiCompanyModule();//affichage de l'entrer
-    // Toggle menu URLs
-  urlConfigBtn.addEventListener("click", () => {
-    menuConfig.style.display = menuConfig.style.display === "none" ? "block" : "none";
-  });
-  //afficher/ajouter URL
-  document.getElementById("btn_ajouter_urls").addEventListener("click", () => {
-  const profilsUrl = JSON.parse(localStorage.getItem("profilsUrl")) || {
-    1: "https://www.iouston.com/contact-2/",
-    2: "https://s-t-v.fr/"
-  };
+//fonction pour gerer l'affichage des boutons
+  async function gererAffichageBoutons() {
   const pageElement = document.getElementById("page");
   if (!pageElement) {
-    showError("Impossible de récupérer la page active");
+    console.warn("Élément #page non trouvé");
     return;
   }
   const currentUrl = pageElement.textContent.trim();
-  //Vérifie si l'url existe déjà dans profilsUrl
-  const exists = Object.values(profilsUrl).includes(currentUrl);
-  if (exists) {
-    showErrorMessage("Cette URL est déjà enregistrée."); 
+  const { BASE_URL, API_KEY, profilsUrl: savedProfils } = await browser.storage.local.get(["BASE_URL", "API_KEY", "profilsUrl"]);
+
+// Valeurs par défaut si profils absents
+let profils = savedProfils;
+if (!profils || Object.keys(profils).length === 0) {
+  profils = {
+   
+  };
+  await browser.storage.local.set({ profilsUrl: profils }); // Sauvegarde pour la suite
+}
+  const isConfigured = BASE_URL && API_KEY;
+  const urlExists = Object.values(profils).includes(currentUrl);
+
+  const btnAjouter = document.getElementById("btn_ajouter_urls");
+  const btnModifier = document.getElementById("btn_modifier_urls");
+  const btnSupprimer = document.getElementById("btn_supprimer_urls");
+
+  if (!btnAjouter || !btnModifier || !btnSupprimer) {
+    console.error("Un ou plusieurs boutons sont introuvables dans le DOM !");
     return;
   }
-  //Sinon, on affiche le formulaire d'ajout
-  showAddUrlForm(currentUrl);
+  // Réinitialiser l'affichage
+  btnAjouter.style.display = "none";
+  btnModifier.style.display = "none";
+  btnSupprimer.style.display = "none";
+  if (urlExists) {
+    btnModifier.style.display = "inline-block";
+    btnSupprimer.style.display = "inline-block";
+
+btnModifier.onclick = async () => {
+  const pageElement = document.getElementById("page");
+  const currentUrl = pageElement?.textContent.trim();
+  if (!currentUrl) {
+    alert("Impossible de récupérer l'URL actuelle");
+    return;
+  }
+
+  const profilsUrl = await browser.storage.local.get("profilsUrl").then(res => res.profilsUrl || {});
+  const mappings = await browser.storage.local.get("mappings").then(res => res.mappings || {});
+  const urlKeyEntry = Object.entries(profilsUrl).find(([_, url]) => url === currentUrl);
+  const key = urlKeyEntry?.[0];
+
+  if (!key || !mappings[key]) {
+    alert("Aucun mapping existant pour cette URL");
+    return;
+  }
+
+  const mapping = mappings[key];
+  const dolibarrData = await getAvailableFields(); // récupère projets, tiers, companies
+  const dolibarrFields = getDolibarrFieldsFromData(dolibarrData); // transforme pour liste déroulante
+
+  showEditMappingForm(currentUrl, mapping, dolibarrFields, key); // affiche formulaire d'édition
+};
+   btnSupprimer.onclick = async () => {
+  const confirmation = confirm("Êtes-vous sûr de vouloir supprimer cette URL et son mapping associé ?");
+  if (!confirmation) return;
+
+  const pageElement = document.getElementById("page");
+  const currentUrl = pageElement?.textContent.trim();
+
+  if (!currentUrl) {
+    alert("URL non détectée.");
+    return;
+  }
+
+  const { profilsUrl, mappings } = await browser.storage.local.get(["profilsUrl", "mappings"]);
+
+  // Trouver la clé de l’URL à supprimer
+  const urlEntry = Object.entries(profilsUrl || {}).find(([_, url]) => url === currentUrl);
+
+  if (!urlEntry) {
+    alert("Cette URL n'est pas enregistrée.");
+    return;
+  }
+
+  const [keyToDelete] = urlEntry;
+
+  // Supprimer de profilsUrl
+  delete profilsUrl[keyToDelete];
+
+  // Supprimer du mapping
+  if (mappings && mappings[keyToDelete]) {
+    delete mappings[keyToDelete];
+  }
+
+  // Sauvegarder les changements
+  await browser.storage.local.set({ profilsUrl, mappings });
+
+  alert("URL et mapping supprimés avec succès !");
+  // Recharger les boutons
+  gererAffichageBoutons();
+};
+
+  } else if (isConfigured) {
+    btnAjouter.style.display = "inline-block";
+  }
+}
+  function showEditMappingForm(url, mapping, dolibarrFields, mappingKey) {
+  if (document.getElementById("edit-url-form")) return;
+
+  // Masquer les autres éléments
+  document.body.querySelectorAll("body > *:not(script)").forEach(el => {
+    if (el.id !== "edit-url-form") el.style.display = "none";
+  });
+
+  const formContainer = document.createElement("div");
+  formContainer.id = "edit-url-form";
+  formContainer.classList.add("form-mapping-container");
+
+  const urlLabel = document.createElement("label");
+  urlLabel.classList.add("url-label");
+  urlLabel.textContent = "URL : " + url;
+  formContainer.appendChild(urlLabel);
+
+  const headerRow = document.createElement("div");
+  headerRow.classList.add("mapping-row");
+
+  const labelForm = document.createElement("div");
+  labelForm.textContent = "Champs du formulaire (détectés)";
+  labelForm.style.fontWeight = "bold";
+  labelForm.style.flex = "1";
+
+  const labelDolibarr = document.createElement("div");
+  labelDolibarr.textContent = "Champs Dolibarr (modifiables)";
+  labelDolibarr.style.fontWeight = "bold";
+  labelDolibarr.style.flex = "1";
+
+  headerRow.appendChild(labelForm);
+  headerRow.appendChild(labelDolibarr);
+  formContainer.appendChild(headerRow);
+
+  // Boucle sur les champs mappés uniquement
+  Object.entries(mapping).forEach(([formField, dolibarrField]) => {
+    const row = document.createElement("div");
+    row.classList.add("mapping-row");
+
+    // Partie champ formulaire HTML (lecture seule)
+    const inputForm = document.createElement("input");
+    inputForm.type = "text";
+    inputForm.classList.add("input-form");
+    inputForm.value = formField;
+    inputForm.readOnly = true;
+    inputForm.style.flex = "1";
+    inputForm.style.marginRight = "10px";
+
+    // Partie champ Dolibarr (modifiable)
+    const selectDolibarr = document.createElement("select");
+    selectDolibarr.classList.add("select-dolibarr");
+    selectDolibarr.style.flex = "1";
+
+    selectDolibarr.innerHTML = `<option value="">-- Champ Dolibarr --</option>`;
+    dolibarrFields.forEach(field => {
+      const option = document.createElement("option");
+      option.value = field.value;
+      option.textContent = field.label;
+      if (field.value === dolibarrField) {
+        option.selected = true;
+      }
+      selectDolibarr.appendChild(option);
+    });
+
+    row.appendChild(inputForm);
+    row.appendChild(selectDolibarr);
+    formContainer.appendChild(row);
+  });
+
+  // Bouton Enregistrer les modifications
+  const saveButton = document.createElement("button");
+  saveButton.textContent = "Enregistrer les modifications";
+  saveButton.classList.add("btn-save-mapping");
+  saveButton.addEventListener("click", async () => {
+    const updatedMapping = {};
+    document.querySelectorAll(".mapping-row").forEach(row => {
+      const input = row.querySelector(".input-form");
+      const select = row.querySelector(".select-dolibarr");
+
+      const formField = input?.value.trim();
+      const dolibarrVal = select?.value.trim();
+
+      if (formField && dolibarrVal) {
+        updatedMapping[formField] = dolibarrVal;
+      }
+    });
+
+    const store = await browser.storage.local.get("mappings");
+    const allMappings = store.mappings || {};
+    allMappings[mappingKey] = updatedMapping;
+
+    await browser.storage.local.set({ mappings: allMappings });
+    alert("Mapping mis à jour avec succès !");
+    formContainer.remove();
+document.body.querySelectorAll("body > *:not(script)").forEach(el => {
+  if (el.id !== "add-url-form") el.style.display = "";
 });
-  document.getElementById("btn_modifier_urls").addEventListener("click", () => {
-    alert("Fonction à implémenter : modifier les URLs");
+
   });
-  document.getElementById("btn_supprimer_urls").addEventListener("click", () => {
-    alert("supprimer les URLs");
+  formContainer.appendChild(saveButton);
+
+  // Bouton Retour
+  const backButton = document.createElement("button");
+  backButton.textContent = "Retour";
+  backButton.classList.add("btn-retour-formulaire");
+  backButton.addEventListener("click", () => {
+    formContainer.remove();
+    document.body.querySelectorAll("body > *:not(script)").forEach(el => {
+      if (el.id !== "edit-url-form") el.style.display = "";
+    });
   });
+  formContainer.appendChild(backButton);
+
+  document.body.appendChild(formContainer);
+}
+//*****************************************************************************************************************
+async function fetchExtraFieldsById(endpoint, id, entity) {
+  const url = `${BASE_URL}/${endpoint}/${id}?DOLAPIENTITY=${entity}`;
+  const headers = {
+    "DOLAPIKEY": API_KEY,
+    "Accept": "application/json"
+  };
+
+  try {
+    const response = await fetch(url, { headers });
+    const text = await response.text();
+    console.log(`Réponse brute de /${endpoint}/${id} :`, text);
+    const data = JSON.parse(text);
+    return data.array_options || {};
+  } catch (error) {
+    console.error(`Erreur lors de la récupération des champs supplémentaires pour ${endpoint}/${id} :`, error);
+    return {};
+  }
+}
+function getDolibarrFieldsFromData({ project, tiers, company }) {
+  const result = [];
+
+  const addFields = (obj, prefix) => {
+    for (const key in obj) {
+      if (!obj.hasOwnProperty(key)) continue;
+
+      if (key === "array_options" && typeof obj[key] === "object") {
+        const extraFields = obj[key];
+        console.log(`${prefix} - array_options:`, extraFields);
+        for (const extraKey in extraFields) {
+          result.push({
+            label: `${prefix} - ExtraField - ${extraKey.replace(/^options_/, "")}`,
+            value: `${prefix.toLowerCase()}.array_options.${extraKey}`
+          });
+        }
+      } else {
+        result.push({
+          label: `${prefix} - ${key}`,
+          value: `${prefix.toLowerCase()}.${key}`
+        });
+      }
+    }
+  };
+
+  addFields(project || {}, "Project");
+  addFields(tiers || {}, "Tiers");
+  addFields(company || {}, "Company");
+
+  return result;
+}
+
+
+async function getAvailableFields() {
+  const entity = await browser.storage.local.get("ENTITY").then(res => res.ENTITY || "");
+  const headers = await getHeaders();
+
+  // Récupération d’un projet
+  const resProjects = await fetch(`${BASE_URL}/projects?limit=1&DOLAPIENTITY=${entity}`, { headers });
+  const rawProject = await resProjects.text();
+  console.log("Réponse brute de /projects :", rawProject);
+
+  let sampleProject;
+  try {
+    sampleProject = JSON.parse(rawProject);
+  } catch (e) {
+    console.error("Erreur parsing JSON /projects :", e);
+    return { project: {}, tiers: {}, company: {} };
+  }
+
+  const project = sampleProject?.[0] || {};
+
+  // Récupération d’un tiers
+  const resTiers = await fetch(`${BASE_URL}/thirdparties?limit=1&DOLAPIENTITY=${entity}`, { headers });
+  const rawText = await resTiers.text();
+  console.log("Réponse brute de /thirdparties :", rawText);
+
+  let sampleTiers;
+  try {
+    sampleTiers = JSON.parse(rawText);
+  } catch (e) {
+    console.error("Erreur lors du parsing JSON /thirdparties :", e);
+    return { project: {}, tiers: {}, company: {} };
+  }
+
+  const tiers = sampleTiers?.[0] || {};
+
+  // Vérification des IDs
+  const projectId = project?.id;
+  const tierId = tiers?.id;
+
+  if (!projectId || !tierId) {
+    console.error("ID projet ou tiers manquant");
+    return { project: {}, tiers: {}, company: {} };
+  }
+
+  // Récupération de la compagnie
+  const resCompany = await fetch(`${BASE_URL}/setup/company`, { headers });
+  const company = await resCompany.json();
+
+  // Récupération des extra fields
+  const projectExtra = await fetchExtraFieldsById("projects", projectId, entity);
+  const tiersExtra = await fetchExtraFieldsById("thirdparties", tierId, entity);
+  const companyExtra = await fetchCompanyExtraFieldsFromMulticompany(entity); // spécifique
+
+  console.log("Project array_options :", projectExtra);
+  console.log("Tiers array_options :", tiersExtra);
+  console.log("Company array_options :", companyExtra);
+
+  // Injection dans les objets
+  project.array_options = projectExtra;
+  tiers.array_options = tiersExtra;
+  company.array_options = companyExtra;
+
+  console.log("Project final :", project);
+  console.log("Tiers final :", tiers);
+  console.log("Company final :", company);
+
+  return { project, tiers, company };
+}
+
+
+
+ gererAffichageBoutons();
+function showAddUrlForm(url, fields = [], dolibarrFields = []) {
+   console.log("fields reçus :", fields);
+   console.log("champs Dolibarr disponibles :", dolibarrFields);
+
+  // Masquer tous les autres éléments sauf le formulaire
+  document.body.querySelectorAll("body > *:not(script)").forEach(el => {
+    if (el.id !== "add-url-form") el.style.display = "none";
+  });
+  // Ne pas recréer si déjà présent
+  if (document.getElementById("add-url-form")) return;
+  // Conteneur principal
+  const formContainer = document.createElement("div");
+  formContainer.id = "add-url-form";
+  formContainer.classList.add("form-mapping-container");
+
+  // Label avec l'URL
+  const urlLabel = document.createElement("label");
+  urlLabel.classList.add("url-label");
+  urlLabel.textContent = "URL détectée : " + url;
+  formContainer.appendChild(urlLabel);
+
+  //Ligne d'en-tête : labels de colonnes
+  const headerRow = document.createElement("div");
+  headerRow.classList.add("mapping-row");
+
+  const labelForm = document.createElement("div");
+  labelForm.textContent = "Champs du formulaire";
+  labelForm.style.fontWeight = "bold";
+  labelForm.style.flex = "1";
+
+  const labelDolibarr = document.createElement("div");
+  labelDolibarr.textContent = "Champs Dolibarr";
+  labelDolibarr.style.fontWeight = "bold";
+  labelDolibarr.style.flex = "1";
+
+  headerRow.appendChild(labelForm);
+  headerRow.appendChild(labelDolibarr);
+  formContainer.appendChild(headerRow);
+
+  // Lignes de mapping dynamique
+fields.forEach(field => {
+  const mappingRow = document.createElement("div");
+  mappingRow.classList.add("mapping-row");
+
+  // Conteneur du champ détecté (input + hint)
+  const inputContainer = document.createElement("div");
+  inputContainer.style.display = "flex";
+  inputContainer.style.flexDirection = "column";
+  inputContainer.style.flex = "1";
+  inputContainer.style.marginRight = "10px"; // un peu d'espace à droite
+
+  // Champ détecté (non modifiable)
+  const inputFormField = document.createElement("input");
+  inputFormField.type = "text";
+  inputFormField.placeholder = "Champ détecté";
+  inputFormField.classList.add("input-form");
+  inputFormField.value = field.name || field.id || "";
+  inputFormField.readOnly = true;
+
+  inputContainer.appendChild(inputFormField);
+
+  // Affichage des valeurs possibles si elles existent
+  if (Array.isArray(field.possibleValues) && field.possibleValues.length > 0) {
+    const hint = document.createElement("div");
+    hint.classList.add("possible-values-hint");
+    hint.textContent = "Valeurs possibles : " + field.possibleValues.join(", ");
+    inputContainer.appendChild(hint);
+  }
+
+  // Select Dolibarr
+  const dolibarrSelect = document.createElement("select");
+  dolibarrSelect.classList.add("select-dolibarr");
+  dolibarrSelect.style.flex = "1";
+  dolibarrSelect.innerHTML = `<option value="">-- Champ Dolibarr --</option>`;
+  dolibarrFields.forEach(dField => {
+    const option = document.createElement("option");
+    option.value = dField.value;
+    option.textContent = dField.label;
+    dolibarrSelect.appendChild(option);
+  });
+
+  mappingRow.appendChild(inputContainer);
+  mappingRow.appendChild(dolibarrSelect);
+
+  formContainer.appendChild(mappingRow);
+});
+
+
+  // Bouton Enregistrer
+  const saveButton = document.createElement("button");
+  saveButton.textContent = "Enregistrer";
+  saveButton.classList.add("btn-save-mapping");
+  saveButton.addEventListener("click", async () => {
+  console.log(" Bouton 'Enregistrer le mapping' cliqué");
+
+  const mapping = {};
+
+  // Récupération des champs du formulaire
+  document.querySelectorAll(".mapping-row").forEach((row, index) => {
+    const formInput = row.querySelector(".input-form");
+    const dolibarrSelect = row.querySelector(".select-dolibarr");
+
+    const inputVal = formInput?.value.trim();
+    const dolibarrVal = dolibarrSelect?.value.trim();
+
+    console.log(`Ligne ${index + 1} → input: "${inputVal}", dolibarr: "${dolibarrVal}"`);
+
+    if (inputVal && dolibarrVal) {
+      mapping[inputVal] = dolibarrVal;
+    }
+  });
+
+  console.log(" Mapping généré :", mapping);
+
+  // Récupération des profils URL
+  const profilsUrl = await browser.storage.local.get("profilsUrl").then(res => res.profilsUrl || {});
+  console.log(" Profils URL actuels :", profilsUrl);
+
+  const pageElement = document.getElementById("page");
+  const currentUrl = pageElement?.textContent.trim();
+  console.log(" URL actuelle :", currentUrl);
+
+  const urlKeyEntry = Object.entries(profilsUrl).find(([_, url]) => url === currentUrl);
+  const key = urlKeyEntry ? urlKeyEntry[0] : Date.now().toString();
+
+  console.log(" Clé utilisée pour enregistrer :", key);
+
+  // Enregistrement du mapping
+  const store = await browser.storage.local.get("mappings");
+  const allMappings = store.mappings || {};
+  allMappings[key] = mapping;
+
+  await browser.storage.local.set({ mappings: allMappings });
+  console.log("Mapping enregistré :", allMappings);
+
+  // Enregistrement de l’URL si nouvelle
+  if (!urlKeyEntry && currentUrl) {
+    profilsUrl[key] = currentUrl;
+    await browser.storage.local.set({ profilsUrl });
+    console.log(" URL ajoutée dans profilsUrl :", profilsUrl);
+  }
+
+  alert("Mapping enregistré avec succès !");
+
+  // Ajoute ceci pour mettre à jour l'affichage des boutons :
+if (typeof gererAffichageBoutons === "function") {
+  gererAffichageBoutons();
+  formContainer.remove();
+document.body.querySelectorAll("body > *:not(script)").forEach(el => {
+  if (el.id !== "add-url-form") el.style.display = "";
+});
+
+}
+});
+  formContainer.appendChild(saveButton);
+
+  // Bouton Retour
+  const backButton = document.createElement("button");
+  backButton.textContent = "Retour";
+  backButton.classList.add("btn-retour-formulaire");
+  backButton.addEventListener("click", () => {
+    formContainer.remove();
+    document.body.querySelectorAll("body > *:not(script)").forEach(el => {
+      if (el.id !== "add-url-form") el.style.display = "";
+    });
+  });
+  formContainer.appendChild(backButton);
+
+  // Ajouter au body
+  document.body.appendChild(formContainer);
+}
+
+//**************************************************************************************************************************
+
+document.getElementById("btn_ajouter_urls").addEventListener("click", async () => {
+  try {
+    // 1. Récupérer URL proprement
+    const pageElement = document.getElementById("page");
+    if (!pageElement) {
+      alert("Impossible de récupérer la page active");
+      return;
+    }
+    const currentUrl = pageElement.textContent.trim();
+    // 2. Appeler ton script PHP distant pour récupérer les champs HTML
+    const phpEndpoint = "http://sc4nipi2890.universe.wf/cedy/recupfields/index.php?url=" + encodeURIComponent(currentUrl);
+    const response = await fetch(phpEndpoint);
+    const data = await response.json();
+    if (data.error) {
+      alert("Erreur du serveur : " + data.error);
+      return;
+    }
+
+    // 3. Récupérer les champs Dolibarr (project, tiers, company)
+    const dolibarrData = await getAvailableFields();
+    const dolibarrFields = getDolibarrFieldsFromData(dolibarrData);
+    // 4. Afficher le formulaire de mapping avec tous les champs
+    showAddUrlForm(currentUrl, data, dolibarrFields);
+  } catch (error) {
+    alert("Erreur réseau : " + error.message);
+  }
+});
+//***************************************************************************************************************************************
+
+  async function afficherListeUrls() {
+  const containerId = "liste-urls-container";
+  const ancienContainer = document.getElementById(containerId);
+  if (ancienContainer) ancienContainer.remove(); // Pour éviter doublons
+
+  const { profilsUrl } = await browser.storage.local.get("profilsUrl");
+  if (!profilsUrl || Object.keys(profilsUrl).length === 0) {
+    alert("Aucune URL enregistrée.");
+    return;
+  }
+
+  // Masquer tous les autres éléments sauf cette section
+  document.body.querySelectorAll("body > *:not(script)").forEach(el => el.style.display = "none");
+
+  const wrapper = document.createElement("div");
+  wrapper.id = containerId;
+  wrapper.style.padding = "20px";
+  wrapper.style.textAlign = "center";
+
+  const titre = document.createElement("h2");
+  titre.textContent = "Liste des URLs enregistrées";
+  wrapper.appendChild(titre);
+
+  Object.entries(profilsUrl).forEach(([key, url]) => {
+    const ligne = document.createElement("div");
+    ligne.style.display = "flex";
+    ligne.style.alignItems = "center";
+    ligne.style.justifyContent = "space-between";
+    ligne.style.maxWidth = "600px";
+    ligne.style.margin = "10px auto";
+    ligne.style.border = "1px solid #ccc";
+    ligne.style.padding = "10px";
+    ligne.style.borderRadius = "6px";
+
+    const urlText = document.createElement("span");
+    urlText.textContent = url;
+    urlText.style.flex = "1";
+    urlText.style.marginRight = "10px";
+    urlText.style.whiteSpace = "nowrap";
+    urlText.style.overflow = "hidden";
+    urlText.style.textOverflow = "ellipsis";
+    urlText.style.maxWidth = "70%"; 
+    urlText.setAttribute("title", url);
+    ligne.appendChild(urlText);
+
+    // Bouton modifier
+    const btnModif = document.createElement("button");
+    btnModif.textContent = "Modifier";
+    btnModif.style.marginRight = "5px";
+    btnModif.onclick = async () => {
+
+      const mappings = await browser.storage.local.get("mappings").then(res => res.mappings || {});
+      const mapping = mappings[key];
+      if (!mapping) return alert("Aucun mapping existant pour cette URL");
+
+      const dolibarrData = await getAvailableFields();
+      const dolibarrFields = getDolibarrFieldsFromData(dolibarrData);
+
+      showEditMappingForm(url, mapping, dolibarrFields, key);
+      wrapper.remove();
+    };
+    ligne.appendChild(btnModif);
+
+    // Bouton supprimer
+    const btnDelete = document.createElement("button");
+    btnDelete.textContent = "Supprimer";
+    btnDelete.onclick = async () => {
+      const confirmDelete = confirm("Supprimer cette URL ?");
+      if (!confirmDelete) return;
+
+      const mappings = await browser.storage.local.get("mappings").then(res => res.mappings || {});
+      delete profilsUrl[key];
+      if (mappings[key]) delete mappings[key];
+
+      await browser.storage.local.set({ profilsUrl, mappings });
+      alert("Supprimé !");
+      afficherListeUrls(); // Recharger
+    };
+    ligne.appendChild(btnDelete);
+
+    wrapper.appendChild(ligne);
+  });
+
+  // Bouton retour
+  const retour = document.createElement("button");
+  retour.textContent = "Retour";
+  retour.style.marginTop = "20px";
+  retour.onclick = () => {
+    wrapper.remove();
+    document.body.querySelectorAll("body > *:not(script)").forEach(el => el.style.display = "");
+  };
+  wrapper.appendChild(retour);
+
+  document.body.appendChild(wrapper);
+}
+
+document.getElementById("voirUrlBtn").addEventListener("click", () => {
+  afficherListeUrls();
+});
+
+
+//***************************************************************************************************************************************
   //--- STATUT PERSO ---
   const addStatusBtn = document.getElementById('addStatusBtn');
   const formContainer = document.getElementById('add-status-form-container');
@@ -128,18 +753,19 @@
   formContainer.style.display = 'none';  // Masque le formulaire
   statusForm.reset(); // Réinitialise les champs
   });
-  statusForm.addEventListener('submit', (e) => {
+  statusForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const key = document.getElementById('status-key').value;
     const value = document.getElementById('status-value').value;
-    let statusMapping = JSON.parse(localStorage.getItem('statusMapping')) || {};
+    let statusMapping = await browser.storage.local.get("statusMapping").then(res => res.statusMapping || {});    
     if (statusMapping.hasOwnProperty(key)) {
       alert("Cette clé existe déjà !");
       return;
     }
     statusMapping[key] = value;
-    localStorage.setItem('statusMapping', JSON.stringify(statusMapping));
-    statusForm.reset();
+      browser.storage.local.set({ statusMapping }).then(() => {
+        console.log("statusMapping sauvegardé !");
+      });    statusForm.reset();
     formContainer.style.display = 'none';
     alert("Statut ajouté !");
   });
@@ -153,7 +779,7 @@
   });
   //--- FETCH DES PROJETS ---
 async function fetchProjectsIfEntityValid() {
-  const entity = localStorage.getItem("ENTITY");
+  const entity = await browser.storage.local.get("ENTITY").then(res => res.ENTITY || "");
   const isEnabled = await isMultiCompanyModuleEnabledWith(BASE_URL, API_KEY);
   if (isEnabled) {
     const isValidEntity = await testEntityIsValid(BASE_URL, API_KEY, entity);
@@ -254,7 +880,6 @@ await fetchProjectsIfEntityValid();
         "Accept": "application/json"
       }
     });
-
     if (!response.ok) {
       console.error("Erreur HTTP lors de la vérification des modules :", response.status, response.statusText);
       return false;
@@ -268,8 +893,7 @@ await fetchProjectsIfEntityValid();
 }
 //Wrapper sans paramètre 
 async function isMultiCompanyModuleEnabled() {
-  const baseUrl = localStorage.getItem("BASE_URL");
-  const apiKey = localStorage.getItem("API_KEY");
+  const { BASE_URL: baseUrl = "", API_KEY: apiKey = "" } = await browser.storage.local.get(["BASE_URL", "API_KEY"]);
   if (!baseUrl || !apiKey) {
     console.warn("BASE_URL ou API_KEY non défini dans localStorage");
     return false;
@@ -314,15 +938,18 @@ async function testEntityIsValid(baseUrl, apiKey, entity) {
 }
 //Fonction utilitaire pour centraliser les headers (incluant éventuellement l'entité)
 async function getHeaders() {
+  const { API_KEY, ENTITY } = await browser.storage.local.get(["API_KEY", "ENTITY"]);
+
   const headers = {
-    "DOLAPIKEY": localStorage.getItem("API_KEY"),
+    "DOLAPIKEY": API_KEY || "",
     "Content-Type": "application/json",
     "Accept": "application/json"
   };
-  const entity = localStorage.getItem("ENTITY");
-  if (entity) {
-    headers["DOLAPIENTITY"] = entity;
+
+  if (ENTITY) {
+    headers["DOLAPIENTITY"] = ENTITY;
   }
+
   return headers;
 }
 //fonction de recuperation des données de la compagnie dolibarr
@@ -375,7 +1002,7 @@ async function fetchThirdpartyDetails(id) {
     1: "Validé",
     2: "Terminé"
   };
-  const customMapping = JSON.parse(localStorage.getItem('statusMapping')) || {};
+  const customMapping = await browser.storage.local.get("statusMapping").then(res => res.statusMapping || {});
   const statusMapping = { ...defaultMapping, ...customMapping };
   const projectStatus = parseInt(projectDetails.status, 10);
   const statusText = statusMapping[projectStatus] || "Inconnu";
@@ -427,7 +1054,7 @@ async function fetchThirdpartyDetails(id) {
       fillFormButton.state.source = "tiers";
     }
   });
-  //Clic sur le lien de la compagnie
+  // Clic sur le lien de la compagnie
   document.getElementById("company-link").addEventListener("click", async (e) => {
     e.preventDefault();
     history.pushState({ project: projectDetails }, "", "company");
@@ -481,7 +1108,7 @@ async function displayCompanyDetails(company) {
     <p><strong>SIRET :</strong> ${company.idprof2 || "Non défini"}</p>
   `;
   const isMulticompanyEnabled = await isMultiCompanyModuleEnabled();
-  const entity = localStorage.getItem("ENTITY") || "1";
+  const entity = await browser.storage.local.get("ENTITY").then(res => res.ENTITY || "1");
   if (isMulticompanyEnabled) {
     const extraFields = await fetchCompanyExtraFieldsFromMulticompany(entity);
 
@@ -495,7 +1122,7 @@ async function displayCompanyDetails(company) {
 function resolvePath(obj, path) {
   return path.split('.').reduce((acc, part) => acc && acc[part], obj);
 }
-  fillFormButton.addEventListener("click", () => {
+  fillFormButton.addEventListener("click", async () => {
   const state = fillFormButton.state || {};
   const { source, project, tiers, company } = state;
 
@@ -509,38 +1136,33 @@ function resolvePath(obj, path) {
     return;
   }
   const currentUrl = pageElement.textContent.trim();
-  const profilsUrl = JSON.parse(localStorage.getItem("profilsUrl")) || {
-  1: "https://www.iouston.com/contact-2/",
-  2: "https://s-t-v.fr/"
-};
+  const profilsUrl = await browser.storage.local.get("profilsUrl").then(res => {
+  return res.profilsUrl || {
+    
+  };
+});
   const entry = Object.entries(profilsUrl).find(([_, url]) => url === currentUrl);
   if (!entry) {
     console.error("Cette extension ne prend pas encore en charge ce site :", currentUrl);
-    showErrorMessage("cette url n'est pas prise en charge !");
+    showErrorMessage("cette url n'est pas prise en charge ! veuillez l'AJOUTER ");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
   const [currentKey] = entry;
-  const mappings = JSON.parse(localStorage.getItem("mappings")) || {
-  1: {
-    "input_1.3": "project.title",
-    "input_3.5": "project.opp_status",
-    "input_3.1": "tiers.address",
-    "input_1.6": "company.name",
-    "input_4": "company.idprof2"
-  },
-  2: {
-    "nom": "project.title",
-    "message": "tiers.email"
-  }
-};
+ const mappings = await browser.storage.local.get("mappings").then(res => {
+  return res.mappings || {
+   
+  };
+});
   const map = mappings[currentKey];
+  console.log(map);
   if (!map) {
     console.error("Aucun mapping défini pour cette page.");
     return;
   }
   const nosdata = {};
   for (const champFormulaire in map) {
-    const fullPath = map[champFormulaire]; // ex: "project.title"
+    const fullPath = map[champFormulaire]; 
     nosdata[champFormulaire] = resolvePath({ project, company, tiers }, fullPath) || "";
   }
   browser.tabs.query({ url:`*://${new URL(currentUrl).hostname}/*` }).then(tabs => {

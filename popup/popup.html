@@ -8,6 +8,12 @@
 <body>
  <!-- Formulaire de configuration -->
  <p id="page"> page courante </p>
+ <!-- Menu configuration URL (initialement caché) -->
+<div id="menu_config" style=" margin-top: 10px;">
+  <button id="btn_ajouter_urls"> Ajouter URL </button>
+  <button id="btn_modifier_urls"> Modifier URL </button>
+  <button id="btn_supprimer_urls"> Supprimer URL</button><br><br>
+</div>
 <div id="config-section">
   <h2>Configuration</h2>
   <form id="config-form">
@@ -23,20 +29,7 @@
     <button type="button" id="saveBtn">Enregistrer</button>
   </form>
 </div>
-<!-- Bouton pour modifier la configuration -->
-<!-- Section avec deux boutons côte à côte -->
-<div id="modify-config" style="display: flex; gap: 10px; margin-bottom: 15px;">
-  <button id="editConfigBtn">Modifier la configuration</button>
-  <button id="addStatusBtn">Ajouter un statut</button>
-  <!-- Bouton pour la configuration des URLs -->
-<button id="url_config" style="display: none;">Configurer les URLs</button>
-<!-- Menu configuration URL (initialement caché) -->
-<div id="menu_config" style="display: none; margin-top: 10px;">
-  <button id="btn_ajouter_urls"> Ajouter URL </button>
-  <button id="btn_modifier_urls"> Modifier URL </button>
-  <button id="btn_supprimer_urls"> Supprimer URL</button>
-</div>
-</div>
+
 <!-- Contenu principal -->
 <div id="main-content">
   <h1>Projets :</h1>
@@ -44,8 +37,19 @@
   <div id="project-details"></div>
    <!-- Bouton retour vers les détails du projet -->
   <button id="backToProjectBtn" style="display: none;"> Retour</button>
-  <button id="fillFormButton" style="display: none;">Remplir le formulaire</button>
-<!-- Bouton pour afficher/masquer le formulaire -->
+ <!-- Conteneur du haut avec les deux boutons côte à côte -->
+<div id="top-buttons" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin: 15px 0;">
+   <button id="fillFormButton" style="display: none;">Remplir le formulaire</button>
+  <button id="toggleSettingsBtn"> Paramètres</button>
+</div>
+
+<!-- Bloc avec les 3 boutons (modifiable via toggle) -->
+<div id="modify-config" style="display: none; gap: 10px; margin-bottom: 15px;">
+  <button id="editConfigBtn">Modifier la configuration</button>
+  <button id="voirUrlBtn">Voir les URLs</button>
+  <button id="addStatusBtn">Ajouter un statut</button>
+</div>
+
 <!-- Formulaire d’ajout de statut -->
 <div id="add-status-form-container" style="display: none; margin-bottom: 20px;">
   <h3>Ajouter un statut</h3>
@@ -64,4 +68,3 @@
 <script src="popup.js"></script>
 </body>
 </html>
-
