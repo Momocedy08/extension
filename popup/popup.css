@@ -80,7 +80,6 @@ h8 {
   transition: background-color 0.2s ease;
   text-align: center;
 }
-
 #modify-config button:hover {
   background-color: gray;
 }
@@ -96,12 +95,9 @@ h8 {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-
 #top-buttons button:hover {
   background-color: gray;
 }
-
-
 /* PROJETS */
 ul#project-list {
   list-style: none;
@@ -183,7 +179,6 @@ ul#project-list li div {
 #add-status-form button[type="submit"]:hover {
   background-color: gray;
 }
-
 #messageErreur {
   display: none; /* caché par défaut */
   position: fixed;  /* pour être fixe même en scroll */
@@ -214,18 +209,15 @@ ul#project-list li div {
   overflow-y: auto;
   background-color: #fff;
 }
-
 .url-label {
   font-weight: bold;
   font-size: 1em;
   color: #333;
 }
-
 .mapping-row {
   display: flex;
   gap: 10px;
 }
-
 .input-form, .input-dolibarr {
   flex: 1;
   padding: 6px;
@@ -233,7 +225,6 @@ ul#project-list li div {
   border-radius: 4px;
   box-sizing: border-box;
 }
-
 .btn-save-mapping {
   background-color: green;
   color: white;
@@ -257,7 +248,6 @@ ul#project-list li div {
   font-weight: bold;
   transition: background-color 0.3s ease;
 }
-
 #menu_config button:hover {
   background-color: gray;
 }
