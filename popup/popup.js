@@ -481,7 +481,7 @@ fields.forEach(field => {
     await browser.storage.local.set({ profilsUrl });
   }
   alert("Mapping enregistré avec succès !");
-  // Ajoute ceci pour mettre à jour l'affichage des boutons :
+  // mettre à jour l'affichage des boutons :
 if (typeof gererAffichageBoutons === "function") {
   gererAffichageBoutons();
   formContainer.remove();
@@ -516,7 +516,7 @@ document.getElementById("btn_ajouter_urls").addEventListener("click", async () =
       return;
     }
     const currentUrl = pageElement.textContent.trim();
-    // 2. Appeler ton script PHP distant pour récupérer les champs HTML
+    // 2. Appele du script PHP distant pour récupérer les champs HTML
     const phpEndpoint = "http://sc4nipi2890.universe.wf/cedy/recupfields/index.php?url=" + encodeURIComponent(currentUrl);
     const response = await fetch(phpEndpoint);
     const data = await response.json();
@@ -1018,7 +1018,6 @@ async function displayCompanyDetails(company) {
   // Fusionner avec les extra fields classiques
   const arrayOptions = company.array_options || {};
   const allExtras = { ...arrayOptions, ...multicompanyExtras };
-
   for (const [key, value] of Object.entries(allExtras)) {
     const label = key.replace("options_", "").replace(/_/g, " ");
     container.innerHTML += `<p><strong>${label} :</strong> ${value || "Non défini"}</p>`;

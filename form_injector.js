@@ -1,6 +1,5 @@
 // form_injector.js
 // Écoute les messages envoyés depuis la popup
-console.log("contentScript injecté sur cette page !");
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "remplirFormulaire") {
     console.log("Message reçu pour remplir le formulaire :", message);
